@@ -65,6 +65,14 @@ export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
     void load();
   }, [load]);
 
+  // If invoice has R0 total, jump straight into money edit mode.
+  useEffect(() => {
+    if (!inv) return;
+    if (inv.status === "paid" || inv.status === "void") return;
+    const total = Number(inv.total) || 0;
+    if (total <= 0) setEditItems(true);
+  }, [inv]);
+
   const client = useMemo(():
     | { company_name: string; email: string | null }
     | undefined => {
@@ -154,6 +162,11 @@ export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
           </Link>
           <h1 className="mt-2 font-heading text-2xl font-semibold text-foreground">{inv.invoice_number}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{client?.company_name ?? "Client"}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Enter amounts under <span className="text-foreground">Line items → Edit items</span> (ZAR excl. VAT). Mark{" "}
+            <span className="text-foreground">sent</span> when billing the client, then <span className="text-foreground">paid</span>{" "}
+            when money lands — that creates the receipt.
+          </p>
           {receipt ? (
             <p className="mt-1 text-xs text-emerald-400">Receipt: {receipt.receipt_number}</p>
           ) : null}
@@ -229,6 +242,11 @@ export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
         <div className="overflow-x-auto">
           {editItems ? (
             <div className="space-y-3 p-4">
+              <div className="hidden text-xs uppercase text-muted-foreground sm:grid sm:grid-cols-12 sm:gap-2">
+                <span className="sm:col-span-6">Description</span>
+                <span className="sm:col-span-2">Qty</span>
+                <span className="sm:col-span-3">Amount (ZAR excl. VAT)</span>
+              </div>
               {draftItems.map((it, idx) => (
                 <div key={idx} className="grid gap-2 sm:grid-cols-12">
                   <input
@@ -256,7 +274,7 @@ export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
                   <input
                     type="number"
                     min={0}
-                    step={0.01}
+                    step={100}
                     className="pj-input sm:col-span-3 py-2 text-sm"
                     value={it.unitPrice}
                     onChange={(e) =>
@@ -264,6 +282,7 @@ export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
                         rows.map((r, i) => (i === idx ? { ...r, unitPrice: Number(e.target.value) } : r))
                       )
                     }
+                    placeholder="Amount ZAR"
                   />
                   <Button
                     type="button"

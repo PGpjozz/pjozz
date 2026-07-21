@@ -32,12 +32,12 @@ export function AIInsightsPanel({
   /** Increment when the daily brief is regenerated so unread insights reload. */
   refreshToken?: number;
 }) {
-  const { flags } = useFeatureFlags();
+  const { aiEnabled } = useFeatureFlags();
   const [insights, setInsights] = useState<InsightRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!flags.enableAi) {
+    if (!aiEnabled) {
       setInsights([]);
       setLoading(false);
       return;
@@ -46,7 +46,7 @@ export function AIInsightsPanel({
     const json = (await res.json()) as { ok: boolean; data?: { insights: InsightRow[] } };
     if (json.ok && json.data) setInsights(json.data.insights);
     setLoading(false);
-  }, [flags.enableAi]);
+  }, [aiEnabled]);
 
   useEffect(() => {
     void load();
@@ -62,7 +62,7 @@ export function AIInsightsPanel({
   }, [load]);
 
   const markAll = async () => {
-    if (!flags.enableAi) return;
+    if (!aiEnabled) return;
     const res = await fetch("/api/ai/insights/mark-read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -76,7 +76,7 @@ export function AIInsightsPanel({
   };
 
   const markOne = async (id: string) => {
-    if (!flags.enableAi) return;
+    if (!aiEnabled) return;
     await fetch("/api/ai/insights/mark-read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -95,8 +95,8 @@ export function AIInsightsPanel({
           size="sm"
           className="h-8 text-xs"
           onClick={() => void markAll()}
-          disabled={!flags.enableAi}
-          title={!flags.enableAi ? "AI is disabled in Settings" : "Mark all read"}
+          disabled={!aiEnabled}
+          title={!aiEnabled ? "AI is disabled in Settings" : "Mark all read"}
         >
           Mark all read
         </Button>
@@ -114,7 +114,7 @@ export function AIInsightsPanel({
           </div>
         ) : insights.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {flags.enableAi ? "No unread insights. Run the daily brief to generate more." : "AI is disabled in Settings."}
+            {aiEnabled ? "No unread insights. Run the daily brief to generate more." : "AI is disabled in Settings."}
           </p>
         ) : (
           <>

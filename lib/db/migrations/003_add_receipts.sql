@@ -1,4 +1,8 @@
--- Add receipts for paid invoices
+-- ============================================================
+-- Run this in Supabase → SQL Editor → New query → Run
+-- Project: amnwmtyvqgiiturkxuyd
+-- Fixes: "Could not find the table 'public.receipts' in the schema cache"
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.receipts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -32,3 +36,6 @@ BEGIN
 END$$;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.receipts TO authenticated;
+
+-- Reload PostgREST schema cache so the API sees the new table
+NOTIFY pgrst, 'reload schema';

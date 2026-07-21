@@ -48,7 +48,13 @@ function requireEnv(name: string): string {
 export function createServerSupabaseClient(): TypedSupabaseClient {
   return createClient<Database>(
     requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    requireEnv("SUPABASE_SERVICE_ROLE_KEY")
+    requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    {
+      global: {
+        // Next.js caches fetch() GETs by default; settings/feature flags must be fresh.
+        fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+      },
+    }
   );
 }
 

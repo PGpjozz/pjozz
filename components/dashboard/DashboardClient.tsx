@@ -30,7 +30,7 @@ function alertTone(p: string) {
 }
 
 export function DashboardClient() {
-  const { flags } = useFeatureFlags();
+  const { loading: flagsLoading, aiEnabled } = useFeatureFlags();
   const [brief, setBrief] = useState<DailyBrief | null>(null);
   const [briefLoading, setBriefLoading] = useState(true);
   const [briefBusy, setBriefBusy] = useState(false);
@@ -55,10 +55,11 @@ export function DashboardClient() {
   }, []);
 
   useEffect(() => {
+    if (flagsLoading) return;
     (async () => {
       setBriefLoading(true);
       try {
-        if (!flags.enableAi) {
+        if (!aiEnabled) {
           setBrief(null);
           return;
         }
@@ -69,7 +70,7 @@ export function DashboardClient() {
         setBriefLoading(false);
       }
     })();
-  }, [loadBrief, flags.enableAi]);
+  }, [loadBrief, aiEnabled, flagsLoading]);
 
   useEffect(() => {
     (async () => {
@@ -88,7 +89,7 @@ export function DashboardClient() {
     const id = window.setInterval(() => {
       void (async () => {
         try {
-          if (!flags.enableAi) return;
+          if (!aiEnabled) return;
           await loadBrief({ refresh: false });
           setInsightRefresh((t) => t + 1);
         } catch {
@@ -97,10 +98,10 @@ export function DashboardClient() {
       })();
     }, 30 * 60 * 1000);
     return () => window.clearInterval(id);
-  }, [loadBrief, flags.enableAi]);
+  }, [loadBrief, aiEnabled]);
 
   const regenerate = async () => {
-    if (!flags.enableAi) {
+    if (!aiEnabled) {
       toast.error("AI is disabled in Settings.");
       return;
     }
@@ -142,9 +143,9 @@ export function DashboardClient() {
                   type="button"
                   size="sm"
                   variant="secondary"
-                  disabled={briefBusy || briefLoading || !flags.enableAi}
+                  disabled={briefBusy || briefLoading || flagsLoading || !aiEnabled}
                   onClick={() => void regenerate()}
-                  title={!flags.enableAi ? "AI is disabled in Settings" : "Regenerate brief"}
+                  title={!aiEnabled ? "AI is disabled in Settings" : "Regenerate brief"}
                 >
                   <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                   {briefBusy ? "Working…" : "Regenerate"}
@@ -153,7 +154,7 @@ export function DashboardClient() {
             </div>
 
             <div className="p-5">
-              {briefLoading ? (
+              {briefLoading || flagsLoading ? (
                 <div className="space-y-4 animate-pulse">
                   <div className="h-4 w-full max-w-3xl rounded bg-muted" />
                   <div className="h-4 w-full max-w-2xl rounded bg-muted" />
@@ -163,7 +164,7 @@ export function DashboardClient() {
                   </div>
                   <div className="h-24 rounded-lg bg-muted" />
                 </div>
-              ) : !flags.enableAi ? (
+              ) : !aiEnabled ? (
                 <p className="text-sm text-muted-foreground">AI is disabled in Settings.</p>
               ) : brief ? (
                 <div className="space-y-6">

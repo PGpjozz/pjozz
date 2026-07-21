@@ -20,7 +20,7 @@ export function AIChat({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const { flags, loading } = useFeatureFlags();
+  const { loading, aiEnabled } = useFeatureFlags();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState("");
@@ -51,10 +51,13 @@ export function AIChat({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming, open]);
 
+  useEffect(() => {
+    if (!aiEnabled && open) onOpenChange(false);
+  }, [aiEnabled, open, onOpenChange]);
+
   const send = useCallback(
     async (userText: string) => {
-      if (loading) return;
-      if (!flags.enableAi) return;
+      if (!aiEnabled) return;
       const trimmed = userText.trim();
       if (!trimmed || busy) return;
       const nextMsgs: Msg[] = [...messages, { role: "user", content: trimmed }];
@@ -112,7 +115,7 @@ export function AIChat({
         setBusy(false);
       }
     },
-    [busy, contextBlock, flags.enableAi, loading, messages]
+    [aiEnabled, busy, contextBlock, messages]
   );
 
   return (
@@ -121,8 +124,7 @@ export function AIChat({
         type="button"
         aria-label="Open AI chat"
         onClick={() => {
-          if (loading) return;
-          if (!flags.enableAi) return;
+          if (!aiEnabled) return;
           onOpenChange(true);
         }}
         className={cn(
@@ -130,13 +132,13 @@ export function AIChat({
           "shadow-[0_0_28px_rgba(0,229,160,0.35)]",
           open && "pointer-events-none opacity-0"
         )}
-        disabled={loading || !flags.enableAi}
-        title={loading ? "Loading…" : !flags.enableAi ? "AI is disabled in Settings" : "Open AI chat"}
+        disabled={loading || !aiEnabled}
+        title={loading ? "Loading…" : !aiEnabled ? "AI is disabled in Settings" : "Open AI chat"}
       >
         <MessageCircle className="h-7 w-7" />
       </button>
 
-      {open && flags.enableAi ? (
+      {open && aiEnabled ? (
         <div
           className="fixed bottom-6 right-6 z-50 flex w-[min(100vw-2rem,400px)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
           style={{ height: "min(500px, calc(100vh - 5rem))" }}

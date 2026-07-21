@@ -34,6 +34,19 @@ async function saveSetting(key: SettingKey, value: unknown) {
   return json.data.value;
 }
 
+function labelForFlag(key: "enableAi" | "enableWhatsApp" | "enableResendEmail" | "enableOutreachAutomation") {
+  switch (key) {
+    case "enableAi":
+      return "AI";
+    case "enableWhatsApp":
+      return "WhatsApp";
+    case "enableResendEmail":
+      return "Resend email";
+    case "enableOutreachAutomation":
+      return "Outreach automation";
+  }
+}
+
 function Field({
   label,
   hint,
@@ -76,16 +89,22 @@ function NumberInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
 function Switch({
   checked,
   onChange,
+  disabled,
+  label,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
+  label?: string;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
+      aria-label={label}
       onClick={() => onChange(!checked)}
       className={[
-        "relative h-6 w-11 rounded-full border transition-colors",
+        "relative h-6 w-11 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         checked ? "border-primary/40 bg-primary/45" : "border-border bg-muted/60",
       ].join(" ")}
       aria-pressed={checked}
@@ -184,6 +203,23 @@ export function BusinessSettingsPanel() {
       await reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const setFlagAndSave = async <K extends keyof typeof flags>(key: K, value: (typeof flags)[K]) => {
+    const previous = flags;
+    const next = { ...flags, [key]: value };
+    setFlags(next);
+    setSaving(`flag:${String(key)}`);
+    try {
+      await saveSetting("features.flags", next);
+      await reloadFeatureFlags();
+      toast.success(value ? `${labelForFlag(key)} enabled` : `${labelForFlag(key)} disabled`);
+    } catch (e) {
+      setFlags(previous);
+      toast.error(e instanceof Error ? e.message : "Could not update feature flag");
     } finally {
       setSaving(null);
     }
@@ -527,34 +563,55 @@ export function BusinessSettingsPanel() {
 
       <section className="rounded-xl border border-border bg-card/30 p-5">
         <h3 className="font-heading text-sm font-semibold text-foreground">Feature flags</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Toggles save immediately — no need to click Save all.</p>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="flex items-center justify-between rounded-lg border border-border bg-background/50 p-3">
             <div>
               <p className="text-sm font-medium text-foreground">Enable AI</p>
               <p className="text-xs text-muted-foreground">Lead scoring, briefs, proposals, chat.</p>
             </div>
-            <Switch checked={flags.enableAi} onChange={(v) => setFlags((s) => ({ ...s, enableAi: v }))} />
+            <Switch
+              label="Enable AI"
+              checked={flags.enableAi}
+              disabled={saving != null}
+              onChange={(v) => void setFlagAndSave("enableAi", v)}
+            />
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border bg-background/50 p-3">
             <div>
               <p className="text-sm font-medium text-foreground">Enable Resend email</p>
               <p className="text-xs text-muted-foreground">Outbound campaign emails and proposal sending.</p>
             </div>
-            <Switch checked={flags.enableResendEmail} onChange={(v) => setFlags((s) => ({ ...s, enableResendEmail: v }))} />
+            <Switch
+              label="Enable Resend email"
+              checked={flags.enableResendEmail}
+              disabled={saving != null}
+              onChange={(v) => void setFlagAndSave("enableResendEmail", v)}
+            />
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border bg-background/50 p-3">
             <div>
               <p className="text-sm font-medium text-foreground">Enable WhatsApp</p>
               <p className="text-xs text-muted-foreground">Twilio outbound + inbound workflow.</p>
             </div>
-            <Switch checked={flags.enableWhatsApp} onChange={(v) => setFlags((s) => ({ ...s, enableWhatsApp: v }))} />
+            <Switch
+              label="Enable WhatsApp"
+              checked={flags.enableWhatsApp}
+              disabled={saving != null}
+              onChange={(v) => void setFlagAndSave("enableWhatsApp", v)}
+            />
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border bg-background/50 p-3">
             <div>
               <p className="text-sm font-medium text-foreground">Enable outreach automation</p>
               <p className="text-xs text-muted-foreground">Campaign send-next processing & automation hooks.</p>
             </div>
-            <Switch checked={flags.enableOutreachAutomation} onChange={(v) => setFlags((s) => ({ ...s, enableOutreachAutomation: v }))} />
+            <Switch
+              label="Enable outreach automation"
+              checked={flags.enableOutreachAutomation}
+              disabled={saving != null}
+              onChange={(v) => void setFlagAndSave("enableOutreachAutomation", v)}
+            />
           </div>
         </div>
       </section>
