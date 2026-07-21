@@ -217,6 +217,11 @@ export function DashboardClient() {
                 />
                 <MetricCard label="MRR (retainers)" value={fmtZar(summary.mrrZar)} hint="Active retainer clients" />
                 <MetricCard
+                  label="Collected revenue"
+                  value={fmtZar(summary.collectedRevenueZar)}
+                  hint="Paid invoices (ZAR incl. VAT)"
+                />
+                <MetricCard
                   label="Open invoices"
                   value={fmtZar(summary.openInvoicesZar)}
                   hint="Sent + overdue invoices"

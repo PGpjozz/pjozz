@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useFeatureFlags } from "@/components/flags/feature-flags";
 import { cn } from "@/lib/utils";
 
@@ -39,20 +40,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="flex shrink-0 flex-col border-b border-border bg-card md:w-56 md:border-b-0 md:border-r">
         <div className="flex flex-1 flex-col gap-1 p-4">
-          <Link href="/dashboard" className="mb-2 flex items-center gap-2 rounded-lg px-1 py-2 transition-opacity hover:opacity-90">
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/40 bg-gradient-to-br from-primary/25 to-background font-heading text-sm font-bold text-primary"
-              aria-hidden
-            >
-              P
-            </div>
-            <div className="leading-tight">
-              <div className="font-heading text-sm font-semibold tracking-tight text-foreground">
-                Pjozz<span className="text-primary">.</span>
-              </div>
-              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Technologies</div>
-            </div>
-          </Link>
+          <div className="mb-2 rounded-lg px-1 py-2">
+            <BrandLogo href="/dashboard" size="md" showWordmark tone="dark" priority />
+          </div>
           <p className="mb-3 text-[11px] leading-snug text-muted-foreground">Smart systems · Real results</p>
           <nav className="flex flex-row flex-wrap gap-1 md:flex-col">
             {NAV.map(({ href, label, icon: Icon }) => {
@@ -63,7 +53,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   href={href}
                   className={cn(
                     "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                    active ? "bg-primary/15 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    active
+                      ? "bg-primary/15 font-medium text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />

@@ -1,9 +1,10 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { ProposalContent } from "@/lib/ai/types";
 
+import { PdfBrandHeader } from "@/components/brand/pdf-brand-header";
+
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1a1a1a" },
-  brand: { fontSize: 11, color: "#00a67e", marginBottom: 4, fontFamily: "Helvetica" },
   title: { fontSize: 18, marginBottom: 16, fontFamily: "Helvetica" },
   h2: { fontSize: 12, marginTop: 12, marginBottom: 6, color: "#0a2a22", fontFamily: "Helvetica" },
   body: { lineHeight: 1.45, marginBottom: 8 },
@@ -15,7 +16,7 @@ export function ProposalPdfDocument({ content }: { content: ProposalContent }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.brand}>Pjozz Technologies</Text>
+        <PdfBrandHeader />
         <Text style={styles.title}>{content.title}</Text>
         <Text style={styles.h2}>Executive summary</Text>
         <Text style={styles.body}>{content.executiveSummary}</Text>

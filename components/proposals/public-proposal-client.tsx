@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import type { ProposalContent } from "@/lib/ai/types";
 import type { Tables } from "@/lib/db/supabase";
@@ -118,10 +119,7 @@ export function PublicProposalClient({
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-5">
           <Link href="/" className="transition-opacity hover:opacity-80">
-            <div className="text-lg font-bold tracking-tight text-[#00a67e]">
-              Pjozz<span className="text-black">.</span>
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Technologies</div>
+            <BrandLogo href={null} size="md" showWordmark tone="light" />
           </Link>
           <Link href="/client" className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline">
             Client hub

@@ -1,9 +1,10 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
+import { PdfBrandHeader } from "@/components/brand/pdf-brand-header";
+import { BRAND_NAME } from "@/lib/brand";
+
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1a1a1a" },
-  brand: { fontSize: 11, color: "#00a67e", marginBottom: 2 },
-  tagline: { fontSize: 8, color: "#666", marginBottom: 16 },
   title: { fontSize: 18, marginBottom: 8 },
   meta: { fontSize: 9, color: "#444", marginBottom: 3 },
   box: { marginTop: 20, padding: 16, borderWidth: 1, borderColor: "#00a67e", borderRadius: 4 },
@@ -36,8 +37,7 @@ export function ReceiptPdfDocument({ data }: { data: ReceiptPdfData }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.brand}>Pjozz Technologies</Text>
-        <Text style={styles.tagline}>Smart systems · Real results</Text>
+        <PdfBrandHeader />
         <Text style={styles.title}>PAYMENT RECEIPT</Text>
         <Text style={styles.meta}>{data.receiptNumber}</Text>
         <Text style={styles.meta}>For invoice: {data.invoiceNumber}</Text>
@@ -53,7 +53,7 @@ export function ReceiptPdfDocument({ data }: { data: ReceiptPdfData }) {
         </View>
 
         <Text style={styles.footer}>
-          This receipt confirms payment received by Pjozz Technologies against the referenced invoice.
+          This receipt confirms payment received by {BRAND_NAME} against the referenced invoice.
         </Text>
       </Page>
     </Document>

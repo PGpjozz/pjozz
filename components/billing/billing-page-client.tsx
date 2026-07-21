@@ -60,6 +60,13 @@ export function BillingPageClient() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // Backfill receipts + client.total_revenue for any paid invoices missing them.
+      try {
+        await fetch("/api/billing/sync-revenue", { method: "POST" });
+      } catch {
+        /* sync is best-effort */
+      }
+
       const [cr, ir] = await Promise.all([
         fetch("/api/clients?page=1&pageSize=100"),
         fetch("/api/invoices?page=1&pageSize=100"),

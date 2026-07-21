@@ -40,7 +40,7 @@ export function DashboardCharts({ summary }: { summary: DashboardSummaryResponse
         </div>
       </div>
       <div className="min-h-[300px] w-full rounded-xl border border-border bg-card/30 p-4 lg:w-[40%]">
-        <h3 className="mb-3 font-heading text-sm font-semibold text-foreground">Revenue by service</h3>
+        <h3 className="mb-3 font-heading text-sm font-semibold text-foreground">Pipeline by service</h3>
         <div className="flex h-[280px] flex-col items-center justify-center sm:flex-row">
           {pieData.length === 0 ? (
             <p className="px-4 text-center text-sm text-muted-foreground">No pipeline value attributed to service types yet.</p>

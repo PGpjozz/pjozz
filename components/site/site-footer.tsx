@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
+
 const COL = [
   {
     title: "Company",
@@ -33,8 +35,8 @@ export function SiteFooter() {
     <footer className="border-t border-white/10 bg-[#020617]/90">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-4 py-12 md:flex-row md:justify-between md:px-6">
         <div>
-          <p className="font-heading text-sm font-semibold text-white">Pjozz Technologies</p>
-          <p className="mt-2 max-w-xs text-sm leading-relaxed text-slate-400">
+          <BrandLogo href="/" size="md" showWordmark tone="dark" />
+          <p className="mt-3 max-w-xs text-sm leading-relaxed text-slate-400">
             Intelligent systems for growth — AI, automation, software, and infrastructure across South Africa.
           </p>
           <p className="mt-4 text-xs text-slate-500">Johannesburg · Soweto · Serving nationwide</p>

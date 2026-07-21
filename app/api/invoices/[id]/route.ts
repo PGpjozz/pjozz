@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { ensureReceiptForPaidInvoice } from "@/lib/billing/receipts";
+import { ensureReceiptForPaidInvoice, syncClientRevenue } from "@/lib/billing/receipts";
 import { computeInvoiceTotals } from "@/lib/billing/numbers";
 import type { TablesUpdate } from "@/lib/db/database.types";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
@@ -122,6 +122,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       } catch (rErr) {
         receiptError = rErr instanceof Error ? rErr.message : "Receipt create failed";
         console.warn("[invoices PATCH] receipt create:", rErr);
+        // Still sync client revenue from paid invoices even if receipt insert fails.
+        if (updated.client_id) {
+          try {
+            await syncClientRevenue(updated.client_id);
+          } catch (syncErr) {
+            console.warn("[invoices PATCH] revenue sync:", syncErr);
+          }
+        }
       }
     }
 

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { Reveal } from "@/components/marketing/Reveal";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { whatsappHref } from "@/lib/marketing/links";
 import { testimonials } from "@/lib/marketing/content";
 import { buttonVariants } from "@/components/ui/button";
@@ -44,6 +45,9 @@ export function HomeView() {
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
             className="max-w-4xl"
           >
+            <div className="mb-8">
+              <BrandLogo href={null} size="lg" showWordmark tone="dark" priority />
+            </div>
             <p className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-cyan-300">
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
               AI · Automation · Software · Infrastructure

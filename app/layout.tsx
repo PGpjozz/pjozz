@@ -23,6 +23,10 @@ export const metadata: Metadata = {
     template: "%s | Pjozz Technologies",
   },
   description: "Smart systems. Real results. AI-powered business automation for Pjozz Technologies.",
+  icons: {
+    icon: [{ url: "/brand/pjozz-logo.png", type: "image/png" }],
+    apple: [{ url: "/brand/pjozz-logo.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({

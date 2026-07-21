@@ -37,14 +37,21 @@ export async function GET() {
 
     // Finance tables may be unapplied in early setups; treat as 0s instead of failing dashboard.
     let invoiceRows: Array<{ status: string; due_at: string | null; total: number | null }> = [];
+    let paidInvoiceRows: Array<{ total: number | null }> = [];
     try {
       const { data, error } = await supabase
         .from("invoices")
         .select("status, due_at, total")
-        .in("status", ["sent", "overdue"]);
-      if (!error && data) invoiceRows = data as typeof invoiceRows;
+        .in("status", ["sent", "overdue", "paid"]);
+      if (!error && data) {
+        invoiceRows = (data as typeof invoiceRows).filter((r) => r.status === "sent" || r.status === "overdue");
+        paidInvoiceRows = (data as typeof invoiceRows)
+          .filter((r) => r.status === "paid")
+          .map((r) => ({ total: r.total }));
+      }
     } catch {
       invoiceRows = [];
+      paidInvoiceRows = [];
     }
 
     if (pErr) throw new Error(pErr.message);
@@ -117,12 +124,14 @@ export async function GET() {
     const dueNext30DaysZar = (invoiceRows ?? [])
       .filter((r) => r.due_at && r.due_at <= next30)
       .reduce((s, r) => s + (Number(r.total) || 0), 0);
+    const collectedRevenueZar = (paidInvoiceRows ?? []).reduce((s, r) => s + (Number(r.total) || 0), 0);
 
     const data: DashboardSummaryResponse = {
       pipelineValueZar: Math.round(pipelineValueZar * 100) / 100,
       activeLeadsCount,
       winRate90d,
       mrrZar: Math.round(mrrZar * 100) / 100,
+      collectedRevenueZar: Math.round(collectedRevenueZar * 100) / 100,
       openInvoicesZar: Math.round(openInvoicesZar * 100) / 100,
       overdueInvoicesZar: Math.round(overdueInvoicesZar * 100) / 100,
       dueNext30DaysZar: Math.round(dueNext30DaysZar * 100) / 100,
@@ -133,6 +142,7 @@ export async function GET() {
         activeLeadsCount,
         winRate90d,
         mrrZar: Math.round(mrrZar * 100) / 100,
+        collectedRevenueZar: Math.round(collectedRevenueZar * 100) / 100,
         openInvoicesZar: Math.round(openInvoicesZar * 100) / 100,
         overdueInvoicesZar: Math.round(overdueInvoicesZar * 100) / 100,
         dueNext30DaysZar: Math.round(dueNext30DaysZar * 100) / 100,

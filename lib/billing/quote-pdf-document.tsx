@@ -1,10 +1,10 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { ProposalContent } from "@/lib/ai/types";
 
+import { PdfBrandHeader } from "@/components/brand/pdf-brand-header";
+
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1a1a1a" },
-  brand: { fontSize: 11, color: "#00a67e", marginBottom: 2 },
-  tagline: { fontSize: 8, color: "#666", marginBottom: 16 },
   title: { fontSize: 18, marginBottom: 6 },
   h2: { fontSize: 12, marginTop: 14, marginBottom: 6, color: "#0a2a22" },
   body: { lineHeight: 1.45, marginBottom: 8 },
@@ -25,8 +25,7 @@ export function QuotePdfDocument({
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.brand}>Pjozz Technologies</Text>
-        <Text style={styles.tagline}>Smart systems · Real results</Text>
+        <PdfBrandHeader />
         <Text style={styles.title}>QUOTATION</Text>
         <Text style={styles.body}>{content.title}</Text>
         {companyName ? <Text style={styles.body}>Prepared for: {companyName}</Text> : null}

@@ -1,9 +1,10 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
+import { PdfBrandHeader } from "@/components/brand/pdf-brand-header";
+import { BRAND_NAME } from "@/lib/brand";
+
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1a1a1a" },
-  brand: { fontSize: 11, color: "#00a67e", marginBottom: 2 },
-  tagline: { fontSize: 8, color: "#666", marginBottom: 16 },
   title: { fontSize: 18, marginBottom: 4 },
   meta: { fontSize: 9, color: "#444", marginBottom: 2 },
   section: { marginTop: 16, marginBottom: 8 },
@@ -49,8 +50,7 @@ export function InvoicePdfDocument({ data }: { data: InvoicePdfData }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.brand}>Pjozz Technologies</Text>
-        <Text style={styles.tagline}>Smart systems · Real results</Text>
+        <PdfBrandHeader />
         <Text style={styles.title}>TAX INVOICE</Text>
         <Text style={styles.meta}>{data.invoiceNumber}</Text>
         <Text style={styles.meta}>Status: {data.status.toUpperCase()}</Text>
@@ -103,7 +103,7 @@ export function InvoicePdfDocument({ data }: { data: InvoicePdfData }) {
         ) : null}
 
         <Text style={styles.footer}>
-          Pjozz Technologies — invoice generated for accounting records. Banking details available on request.
+          {BRAND_NAME} — invoice generated for accounting records. Banking details available on request.
         </Text>
       </Page>
     </Document>
