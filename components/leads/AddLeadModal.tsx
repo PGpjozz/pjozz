@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
+
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +25,7 @@ type Props = {
 };
 
 export function AddLeadModal({ open, onClose, onCreated }: Props) {
+  const { flags } = useFeatureFlags();
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
@@ -50,6 +54,23 @@ export function AddLeadModal({ open, onClose, onCreated }: Props) {
     });
   }
 
+  function resetForm() {
+    setCompanyName("");
+    setContactName("");
+    setEmail("");
+    setPhone("");
+    setWhatsapp("");
+    setWebsite("");
+    setIndustry("");
+    setSource("");
+    setNotes("");
+    setServiceTypes(["webapp"]);
+    setManualOverride(false);
+    setManualScore(50);
+    setSkipAi(false);
+    setError(null);
+  }
+
   async function submit() {
     setError(null);
     if (!companyName.trim() || !email.trim()) {
@@ -73,30 +94,29 @@ export function AddLeadModal({ open, onClose, onCreated }: Props) {
           initialNotes: notes.trim() || undefined,
           serviceTypes,
           manualScore: manualOverride ? manualScore : null,
-          skipAi: skipAi || manualOverride,
+          skipAi: skipAi || manualOverride || !flags.enableAi,
         }),
       });
-      const json = (await res.json()) as { ok: boolean; data?: { id: string }; error?: string };
-      if (!res.ok || !json.ok || !json.data) {
+
+      let json: { ok?: boolean; data?: { id?: string }; error?: string } = {};
+      try {
+        json = (await res.json()) as typeof json;
+      } catch {
+        throw new Error(res.ok ? "Invalid server response" : `Request failed (${res.status})`);
+      }
+
+      if (!res.ok || !json.ok || !json.data?.id) {
         throw new Error(json.error ?? "Failed to create lead");
       }
+
+      toast.success("Lead created");
       onCreated?.(json.data.id);
+      resetForm();
       onClose();
-      setCompanyName("");
-      setContactName("");
-      setEmail("");
-      setPhone("");
-      setWhatsapp("");
-      setWebsite("");
-      setIndustry("");
-      setSource("");
-      setNotes("");
-      setServiceTypes(["webapp"]);
-      setManualOverride(false);
-      setManualScore(50);
-      setSkipAi(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
+      const msg = e instanceof Error ? e.message : "Error";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -138,6 +158,7 @@ export function AddLeadModal({ open, onClose, onCreated }: Props) {
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Acme Logistics (Pty) Ltd"
+              autoFocus
             />
           </Field>
           <Field label="Contact name">
@@ -153,6 +174,7 @@ export function AddLeadModal({ open, onClose, onCreated }: Props) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@company.co.za"
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
@@ -168,7 +190,12 @@ export function AddLeadModal({ open, onClose, onCreated }: Props) {
             </Field>
           </div>
           <Field label="Website">
-            <input className="pj-input" value={website} onChange={(e) => setWebsite(e.target.value)} />
+            <input
+              className="pj-input"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="https://example.co.za"
+            />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Industry">
@@ -198,11 +225,19 @@ export function AddLeadModal({ open, onClose, onCreated }: Props) {
             </div>
           </Field>
           <Field label="Initial notes">
-            <textarea className="pj-input min-h-[88px] resize-y" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <textarea
+              className="pj-input min-h-[88px] resize-y"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
           </Field>
           <div className="space-y-2 rounded-lg border border-border bg-card/40 p-3">
             <label className="flex items-center gap-2 text-sm text-foreground">
-              <input type="checkbox" checked={manualOverride} onChange={(e) => setManualOverride(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={manualOverride}
+                onChange={(e) => setManualOverride(e.target.checked)}
+              />
               Manual score override
             </label>
             {manualOverride ? (
@@ -216,8 +251,13 @@ export function AddLeadModal({ open, onClose, onCreated }: Props) {
               />
             ) : null}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input type="checkbox" checked={skipAi} onChange={(e) => setSkipAi(e.target.checked)} />
-              Skip AI scoring on create
+              <input
+                type="checkbox"
+                checked={skipAi || !flags.enableAi}
+                disabled={!flags.enableAi}
+                onChange={(e) => setSkipAi(e.target.checked)}
+              />
+              {flags.enableAi ? "Skip AI scoring on create" : "AI scoring disabled in Settings"}
             </label>
           </div>
         </div>
