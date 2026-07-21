@@ -26,10 +26,14 @@ Internal CRM + marketing site for Pjozz Technologies (South African SMB services
 | `npm run start` | Run production build |
 | `npm run lint` | ESLint |
 
-## Operator app
+## Sales workflow
 
-CRM routes live under `/dashboard`, `/leads`, `/pipeline`, `/outreach`, `/proposals`, `/clients`, `/billing`, `/settings`.
+1. **Lead** — `/leads` → Add lead (or Discover)
+2. **Proposal** — Lead detail → “Open proposal wizard”, or `/proposals/new`
+3. **Quote PDF** — From proposal list/wizard → Quote PDF (pricing view)
+4. **Send** — Wizard step 5 emails a public share link (`/p/[token]`)
+5. **Accept** — Client accepts → creates **Client**, marks lead **won**, drafts **Invoice**
+6. **Invoice PDF** — `/billing/invoices/[id]` → Invoice PDF
+7. **Receipt PDF** — Mark invoice **paid** → Receipt PDF
 
-Automation callers (n8n/cron) should send `Authorization: Bearer <N8N_INBOUND_SECRET>` (or `OUTREACH_CRON_SECRET`). In production a secret is required.
-
-See `docs/n8n-workflows.md` and `docs/whatsapp-twilio.md` for integration details.
+Apply `lib/db/migrations/003_add_receipts.sql` in Supabase for receipts.

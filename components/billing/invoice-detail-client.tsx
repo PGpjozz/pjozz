@@ -28,15 +28,20 @@ type InvoiceDetail = {
   notes: string | null;
   clients?: { company_name: string; email: string | null } | { company_name: string; email: string | null }[] | null;
   invoice_items?: InvoiceItem[] | null;
+  receipts?: { id: string; receipt_number: string } | { id: string; receipt_number: string }[] | null;
 };
 
 function fmtZar(v: number): string {
-  return `R${(Number(v) || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `R${(Number(v) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
   const [inv, setInv] = useState<InvoiceDetail | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editItems, setEditItems] = useState(false);
+  const [draftItems, setDraftItems] = useState<Array<{ description: string; quantity: number; unitPrice: number }>>(
+    []
+  );
 
   const load = useCallback(async () => {
     try {
@@ -44,6 +49,13 @@ export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
       const json = (await res.json()) as { ok: boolean; data?: InvoiceDetail; error?: string };
       if (!json.ok || !json.data) throw new Error(json.error ?? "Invoice not found");
       setInv(json.data);
+      setDraftItems(
+        (json.data.invoice_items ?? []).map((it) => ({
+          description: it.description,
+          quantity: Number(it.quantity),
+          unitPrice: Number(it.unit_price),
+        }))
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load invoice");
     }
@@ -61,20 +73,65 @@ export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
     return Array.isArray(c) ? c[0] : c;
   }, [inv]);
 
+  const receipt = useMemo(() => {
+    const r = inv?.receipts;
+    if (!r) return null;
+    return Array.isArray(r) ? r[0] ?? null : r;
+  }, [inv]);
+
   const setStatus = async (status: InvoiceDetail["status"]) => {
     setBusy(true);
     try {
       const res = await fetch(`/api/invoices/${invoiceId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, paymentMethod: status === "paid" ? "eft" : undefined }),
       });
-      const json = (await res.json()) as { ok: boolean; data?: InvoiceDetail; error?: string };
+      const json = (await res.json()) as {
+        ok: boolean;
+        data?: InvoiceDetail;
+        error?: string;
+        receiptId?: string | null;
+        receiptError?: string | null;
+      };
       if (!json.ok || !json.data) throw new Error(json.error ?? "Update failed");
       setInv(json.data);
-      toast.success("Updated.");
+      if (status === "paid") {
+        if (json.receiptError) {
+          toast.success("Marked paid.");
+          toast.error(`Receipt not created: ${json.receiptError}. Run 003_add_receipts.sql if needed.`);
+        } else {
+          toast.success("Marked paid — receipt ready.");
+        }
+      } else {
+        toast.success("Updated.");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveItems = async () => {
+    if (!draftItems.length || draftItems.some((it) => !it.description.trim())) {
+      toast.error("Each line needs a description.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: draftItems }),
+      });
+      const json = (await res.json()) as { ok: boolean; data?: InvoiceDetail; error?: string };
+      if (!json.ok || !json.data) throw new Error(json.error ?? "Save failed");
+      setInv(json.data);
+      setEditItems(false);
+      toast.success("Line items saved.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setBusy(false);
     }
@@ -97,8 +154,23 @@ export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
           </Link>
           <h1 className="mt-2 font-heading text-2xl font-semibold text-foreground">{inv.invoice_number}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{client?.company_name ?? "Client"}</p>
+          {receipt ? (
+            <p className="mt-1 text-xs text-emerald-400">Receipt: {receipt.receipt_number}</p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          <a href={`/api/invoices/${invoiceId}/pdf`} target="_blank" rel="noreferrer">
+            <Button type="button" variant="outline" size="sm">
+              Invoice PDF
+            </Button>
+          </a>
+          {inv.status === "paid" ? (
+            <a href={`/api/invoices/${invoiceId}/receipt`} target="_blank" rel="noreferrer">
+              <Button type="button" variant="secondary" size="sm">
+                Receipt PDF
+              </Button>
+            </a>
+          ) : null}
           {(["draft", "sent", "paid", "overdue", "void"] as const).map((s) => (
             <Button
               key={s}
@@ -130,40 +202,126 @@ export function InvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
       </div>
 
       <section className="rounded-xl border border-border bg-card/40">
-        <div className="border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 className="font-heading text-sm font-semibold text-foreground">Line items</h2>
+          <div className="flex gap-2">
+            {editItems ? (
+              <>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => setEditItems(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" disabled={busy} onClick={() => void saveItems()}>
+                  Save
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || inv.status === "paid" || inv.status === "void"}
+                onClick={() => setEditItems(true)}
+              >
+                Edit items
+              </Button>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-xs uppercase text-muted-foreground">
-              <tr className="border-b border-border">
-                <th className="px-4 py-2 text-left">Description</th>
-                <th className="px-4 py-2 text-right">Qty</th>
-                <th className="px-4 py-2 text-right">Unit</th>
-                <th className="px-4 py-2 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(inv.invoice_items ?? []).map((it) => (
-                <tr key={it.id} className="border-b border-border/70 last:border-b-0">
-                  <td className="px-4 py-3">{it.description}</td>
-                  <td className="px-4 py-3 text-right">{Number(it.quantity)}</td>
-                  <td className="px-4 py-3 text-right">{fmtZar(Number(it.unit_price))}</td>
-                  <td className="px-4 py-3 text-right font-medium">{fmtZar(Number(it.amount))}</td>
-                </tr>
+          {editItems ? (
+            <div className="space-y-3 p-4">
+              {draftItems.map((it, idx) => (
+                <div key={idx} className="grid gap-2 sm:grid-cols-12">
+                  <input
+                    className="pj-input sm:col-span-6 py-2 text-sm"
+                    value={it.description}
+                    onChange={(e) =>
+                      setDraftItems((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, description: e.target.value } : r))
+                      )
+                    }
+                    placeholder="Description"
+                  />
+                  <input
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    className="pj-input sm:col-span-2 py-2 text-sm"
+                    value={it.quantity}
+                    onChange={(e) =>
+                      setDraftItems((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, quantity: Number(e.target.value) } : r))
+                      )
+                    }
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    className="pj-input sm:col-span-3 py-2 text-sm"
+                    value={it.unitPrice}
+                    onChange={(e) =>
+                      setDraftItems((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, unitPrice: Number(e.target.value) } : r))
+                      )
+                    }
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="sm:col-span-1"
+                    onClick={() => setDraftItems((rows) => rows.filter((_, i) => i !== idx))}
+                  >
+                    ✕
+                  </Button>
+                </div>
               ))}
-              {(inv.invoice_items ?? []).length === 0 ? (
-                <tr>
-                  <td className="px-4 py-6 text-muted-foreground" colSpan={4}>
-                    No items.
-                  </td>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setDraftItems((rows) => [...rows, { description: "", quantity: 1, unitPrice: 0 }])}
+              >
+                Add line
+              </Button>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="px-4 py-2 text-left">Description</th>
+                  <th className="px-4 py-2 text-right">Qty</th>
+                  <th className="px-4 py-2 text-right">Unit</th>
+                  <th className="px-4 py-2 text-right">Amount</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(inv.invoice_items ?? []).map((it) => (
+                  <tr key={it.id} className="border-b border-border/70 last:border-b-0">
+                    <td className="px-4 py-3">{it.description}</td>
+                    <td className="px-4 py-3 text-right">{Number(it.quantity)}</td>
+                    <td className="px-4 py-3 text-right">{fmtZar(Number(it.unit_price))}</td>
+                    <td className="px-4 py-3 text-right font-medium">{fmtZar(Number(it.amount))}</td>
+                  </tr>
+                ))}
+                {(inv.invoice_items ?? []).length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-6 text-muted-foreground" colSpan={4}>
+                      No items.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
+
+      <p className="text-xs text-muted-foreground">
+        Workflow: draft → send → paid. Marking paid generates a receipt PDF. Apply{" "}
+        <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">003_add_receipts.sql</code> if receipt
+        download fails.
+      </p>
     </div>
   );
 }
-

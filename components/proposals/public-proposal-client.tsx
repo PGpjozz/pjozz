@@ -26,6 +26,8 @@ export function PublicProposalClient({
   const [comment, setComment] = useState("");
   const [showChanges, setShowChanges] = useState(false);
   const [defaults, setDefaults] = useState<ProposalDefaults | null>(null);
+  const [accepted, setAccepted] = useState(proposal.status === "accepted");
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -57,6 +59,7 @@ export function PublicProposalClient({
   const currency = defaults?.currency ?? (proposal.currency ?? "ZAR");
 
   async function accept() {
+    if (accepted) return;
     setBusy("accept");
     try {
       const res = await fetch(`/api/proposals/${proposal.id}/accept`, {
@@ -64,9 +67,21 @@ export function PublicProposalClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
       });
-      const json = (await res.json()) as { ok: boolean; error?: string };
+      const json = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        data?: { invoiceId?: string | null; invoiceError?: string | null; alreadyAccepted?: boolean };
+      };
       if (!json.ok) throw new Error(json.error ?? "Failed");
-      toast.success("Thank you — proposal accepted.");
+      setAccepted(true);
+      if (json.data?.invoiceId) setInvoiceId(json.data.invoiceId);
+      if (json.data?.invoiceError) {
+        toast.success("Proposal accepted. Invoice will be prepared by the team.");
+      } else if (json.data?.invoiceId) {
+        toast.success("Thank you — proposal accepted. An invoice draft was created.");
+      } else {
+        toast.success("Thank you — proposal accepted.");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error");
     } finally {
@@ -179,12 +194,24 @@ export function PublicProposalClient({
         </article>
 
         <div className="mt-12 flex flex-col gap-3 border-t border-zinc-200 pt-8 sm:flex-row sm:items-center">
-          <Button className="bg-[#00a67e] text-black hover:bg-[#00c896]" disabled={busy !== null} onClick={() => void accept()}>
-            {busy === "accept" ? "Submitting…" : "Accept proposal"}
-          </Button>
-          <Button variant="outline" onClick={() => setShowChanges((s) => !s)}>
-            Request changes
-          </Button>
+          {accepted ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <p className="font-semibold">Proposal accepted. Thank you.</p>
+              <p className="mt-1 text-emerald-800/80">
+                Pjozz will follow up with invoice and kickoff next steps
+                {invoiceId ? ` (invoice draft ready).` : "."}
+              </p>
+            </div>
+          ) : (
+            <>
+              <Button className="bg-[#00a67e] text-black hover:bg-[#00c896]" disabled={busy !== null} onClick={() => void accept()}>
+                {busy === "accept" ? "Submitting…" : "Accept proposal"}
+              </Button>
+              <Button variant="outline" onClick={() => setShowChanges((s) => !s)}>
+                Request changes
+              </Button>
+            </>
+          )}
         </div>
 
         {showChanges ? (

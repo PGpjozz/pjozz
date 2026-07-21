@@ -137,10 +137,17 @@ export function BillingPageClient() {
           items: [{ description: "Project deposit / milestone", quantity: 1, unitPrice: 0 }],
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (!res.ok || data.ok === false) throw new Error(data.error ?? "Create invoice failed");
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        data?: { invoice?: { id: string } };
+      };
+      if (!res.ok || data.ok === false || !data.data?.invoice?.id) {
+        throw new Error(data.error ?? "Create invoice failed");
+      }
       toast.success("Draft invoice created.");
-      await load();
+      window.location.href = `/billing/invoices/${data.data.invoice.id}`;
+      return;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Create invoice failed");
     } finally {

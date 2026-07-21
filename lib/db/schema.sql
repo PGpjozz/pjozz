@@ -254,6 +254,18 @@ CREATE TABLE public.payment_plan_items (
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE public.receipts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id UUID NOT NULL UNIQUE REFERENCES public.invoices (id) ON DELETE CASCADE,
+  receipt_number TEXT NOT NULL UNIQUE,
+  amount DECIMAL(12, 2) NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'ZAR',
+  paid_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  payment_method TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- -----------------------------------------------------------------------------
 -- Indexes
 -- -----------------------------------------------------------------------------
@@ -276,6 +288,8 @@ CREATE INDEX idx_invoices_status_due ON public.invoices (status, due_at);
 CREATE INDEX idx_invoice_items_invoice_id ON public.invoice_items (invoice_id);
 CREATE INDEX idx_payment_plans_client_id ON public.payment_plans (client_id);
 CREATE INDEX idx_payment_plan_items_plan_id ON public.payment_plan_items (plan_id);
+CREATE INDEX idx_receipts_invoice_id ON public.receipts (invoice_id);
+CREATE INDEX idx_receipts_created_at ON public.receipts (created_at);
 CREATE INDEX idx_discovery_runs_created_at ON public.discovery_runs (created_at);
 
 -- -----------------------------------------------------------------------------
@@ -350,6 +364,7 @@ ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoice_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_plan_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.receipts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.discovery_runs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "leads_authenticated_all" ON public.leads
@@ -422,6 +437,11 @@ CREATE POLICY "payment_plan_items_authenticated_all" ON public.payment_plan_item
   USING (true)
   WITH CHECK (true);
 
+CREATE POLICY "receipts_authenticated_all" ON public.receipts
+  FOR ALL TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
 CREATE POLICY "discovery_runs_authenticated_all" ON public.discovery_runs
   FOR ALL TO authenticated
   USING (true)
@@ -447,4 +467,5 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.invoices TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.invoice_items TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_plans TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_plan_items TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.receipts TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.discovery_runs TO authenticated;

@@ -65,6 +65,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     await sendTransactionalEmail({ to, subject, html });
 
+    if (row.lead_id) {
+      const { error: leadErr } = await supabase
+        .from("leads")
+        .update({ status: "proposal" })
+        .eq("id", row.lead_id)
+        .neq("status", "won")
+        .neq("status", "lost");
+      if (leadErr) console.warn("[proposals/send] lead status:", leadErr.message);
+    }
+
     return NextResponse.json({ ok: true as const, data: { shareUrl: url } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Server error";

@@ -15,13 +15,17 @@ const createSchema = z.object({
   leadId: z.string().uuid(),
 });
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url);
+    const leadId = url.searchParams.get("leadId");
     const supabase = createServerSupabaseClient();
-    const { data: rows, error } = await supabase
+    let q = supabase
       .from("proposals")
       .select(`*, leads ( id, company_name, contact_name, email )`)
       .order("created_at", { ascending: false });
+    if (leadId) q = q.eq("lead_id", leadId);
+    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
 
     const proposals = rows ?? [];

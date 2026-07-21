@@ -608,6 +608,50 @@ export interface Database {
           },
         ];
       };
+      receipts: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          receipt_number: string;
+          amount: number;
+          currency: string;
+          paid_at: string;
+          payment_method: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          invoice_id: string;
+          receipt_number: string;
+          amount?: number;
+          currency?: string;
+          paid_at?: string;
+          payment_method?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          invoice_id?: string;
+          receipt_number?: string;
+          amount?: number;
+          currency?: string;
+          paid_at?: string;
+          payment_method?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "receipts_invoice_id_fkey";
+            columns: ["invoice_id"];
+            isOneToOne: true;
+            referencedRelation: "invoices";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       pipeline: {
         Row: {
           id: string;

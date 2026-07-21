@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type LeadMini = { company_name: string } | null;
@@ -27,6 +29,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export function ProposalsListClient() {
+  const router = useRouter();
   const [rows, setRows] = useState<ProposalRow[]>([]);
   const [stats, setStats] = useState<{
     totalSent: number;
@@ -35,6 +38,7 @@ export function ProposalsListClient() {
     avgDealSizeZar: number | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,7 +48,12 @@ export function ProposalsListClient() {
         ok: boolean;
         data?: {
           proposals: ProposalRow[];
-          stats: { totalSent: number; acceptanceRate: number | null; totalWonValueZar: number; avgDealSizeZar: number | null };
+          stats: {
+            totalSent: number;
+            acceptanceRate: number | null;
+            totalWonValueZar: number;
+            avgDealSizeZar: number | null;
+          };
         };
       };
       if (json.ok && json.data) {
@@ -60,12 +69,33 @@ export function ProposalsListClient() {
     void load();
   }, [load]);
 
+  async function createInvoice(proposalId: string) {
+    setBusyId(proposalId);
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}/create-invoice`, { method: "POST" });
+      const json = (await res.json()) as {
+        ok: boolean;
+        data?: { invoiceId: string | null; alreadyHadInvoice?: boolean };
+        error?: string;
+      };
+      if (!json.ok || !json.data?.invoiceId) throw new Error(json.error ?? "Could not create invoice");
+      toast.success(json.data.alreadyHadInvoice ? "Opening existing invoice" : "Invoice draft created");
+      router.push(`/billing/invoices/${json.data.invoiceId}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Invoice create failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Proposals</h1>
-          <p className="mt-1 text-sm text-muted-foreground">AI-generated scopes, pricing tiers, and client-ready PDFs.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Lead → proposal → quote PDF → accept → invoice → receipt.
+          </p>
         </div>
         <Link href="/proposals/new" className={cn(buttonVariants({ variant: "default", size: "default" }), "shrink-0")}>
           New proposal
@@ -76,7 +106,10 @@ export function ProposalsListClient() {
         <Stat label="Total sent (non-draft)" value={stats != null ? String(stats.totalSent) : "—"} />
         <Stat label="Acceptance rate" value={stats?.acceptanceRate != null ? `${stats.acceptanceRate}%` : "—"} accent />
         <Stat label="Total won (ZAR)" value={stats != null ? `R ${stats.totalWonValueZar.toLocaleString("en-ZA")}` : "—"} />
-        <Stat label="Avg deal (accepted)" value={stats?.avgDealSizeZar != null ? `R ${stats.avgDealSizeZar.toLocaleString("en-ZA")}` : "—"} />
+        <Stat
+          label="Avg deal (accepted)"
+          value={stats?.avgDealSizeZar != null ? `R ${stats.avgDealSizeZar.toLocaleString("en-ZA")}` : "—"}
+        />
       </div>
 
       <div className="overflow-hidden rounded-xl border border-border">
@@ -107,6 +140,7 @@ export function ProposalsListClient() {
             ) : (
               rows.map((p) => {
                 const client = p.leads && !Array.isArray(p.leads) ? p.leads.company_name : "—";
+                const canInvoice = p.status === "sent" || p.status === "accepted";
                 return (
                   <tr key={p.id} className="border-b border-border/60 hover:bg-muted/10">
                     <td className="px-4 py-3 font-medium text-foreground">{p.title}</td>
@@ -128,10 +162,39 @@ export function ProposalsListClient() {
                       {new Date(p.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Link href={`/proposals/new?id=${p.id}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Link
+                          href={`/proposals/new?id=${p.id}`}
+                          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+                        >
                           Edit
                         </Link>
+                        <a
+                          href={`/api/proposals/${p.id}/quote-pdf`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                        >
+                          Quote PDF
+                        </a>
+                        <a
+                          href={`/api/proposals/${p.id}/pdf`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                        >
+                          Proposal PDF
+                        </a>
+                        {canInvoice ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={busyId === p.id}
+                            onClick={() => void createInvoice(p.id)}
+                          >
+                            {busyId === p.id ? "…" : "Invoice"}
+                          </Button>
+                        ) : null}
                         {p.share_token ? (
                           <a
                             href={`/p/${encodeURIComponent(p.share_token)}`}
@@ -158,10 +221,7 @@ export function ProposalsListClient() {
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div
-      className={cn(
-        "rounded-xl border border-border bg-card/40 px-4 py-3",
-        accent && "border-primary/30 bg-primary/5"
-      )}
+      className={cn("rounded-xl border border-border bg-card/40 px-4 py-3", accent && "border-primary/30 bg-primary/5")}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 font-mono text-lg font-semibold text-foreground">{value}</p>

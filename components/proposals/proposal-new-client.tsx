@@ -83,6 +83,50 @@ export function ProposalNewClient() {
     })();
   }, [existingId]);
 
+  useEffect(() => {
+    const fromLead = sp.get("leadId");
+    if (!fromLead || existingId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const listRes = await fetch(`/api/proposals?leadId=${encodeURIComponent(fromLead)}`);
+        const listJson = (await listRes.json()) as {
+          ok: boolean;
+          data?: { proposals: Array<{ id: string; status: string; lead_id?: string | null }> };
+        };
+        const existing =
+          listJson.ok && listJson.data
+            ? listJson.data.proposals.find((p) => p.status === "draft") ?? listJson.data.proposals[0]
+            : null;
+        if (cancelled) return;
+        if (existing) {
+          setProposalId(existing.id);
+          setLeadId(fromLead);
+          const res = await fetch(`/api/proposals/${existing.id}`);
+          const json = (await res.json()) as {
+            ok: boolean;
+            data?: { document: ProposalContent | null };
+          };
+          if (json.ok && json.data?.document) setDoc(json.data.document);
+          setStep(json.data?.document?.title ? 4 : 2);
+          toast.message("Opened existing proposal for this lead");
+          return;
+        }
+        await createProposalForLead(fromLead);
+        if (!cancelled) {
+          toast.success("Proposal draft started for this lead");
+          setStep(2);
+        }
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Could not start proposal");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when leadId is present
+  }, [sp, existingId]);
+
   async function createProposalForLead(lid: string) {
     const res = await fetch("/api/proposals", {
       method: "POST",
@@ -221,6 +265,24 @@ export function ProposalNewClient() {
     if (!json.ok) throw new Error(json.error ?? "Send failed");
     setShareUrl(json.data?.shareUrl ?? null);
     toast.success("Proposal sent");
+  }
+
+  async function createInvoiceFromProposal() {
+    if (!proposalId) return;
+    try {
+      await saveDocument();
+      const res = await fetch(`/api/proposals/${proposalId}/create-invoice`, { method: "POST" });
+      const json = (await res.json()) as {
+        ok: boolean;
+        data?: { invoiceId: string | null; alreadyHadInvoice?: boolean };
+        error?: string;
+      };
+      if (!json.ok || !json.data?.invoiceId) throw new Error(json.error ?? "Could not create invoice");
+      toast.success(json.data.alreadyHadInvoice ? "Opening existing invoice" : "Invoice draft created");
+      router.push(`/billing/invoices/${json.data.invoiceId}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Invoice create failed");
+    }
   }
 
   async function improve(section: keyof ProposalContent) {
@@ -461,8 +523,18 @@ export function ProposalNewClient() {
               Copy share link
             </Button>
             <a className={cn("inline-flex items-center", buttonVariants({ variant: "secondary" }))} href={`/api/proposals/${proposalId}/pdf`} target="_blank" rel="noreferrer">
-              Download PDF
+              Proposal PDF
             </a>
+            <a className={cn("inline-flex items-center", buttonVariants({ variant: "outline" }))} href={`/api/proposals/${proposalId}/quote-pdf`} target="_blank" rel="noreferrer">
+              Quote PDF
+            </a>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => void createInvoiceFromProposal()}
+            >
+              Create invoice
+            </Button>
             <Button variant="ghost" onClick={() => router.push("/proposals")}>
               Done
             </Button>

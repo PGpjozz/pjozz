@@ -495,26 +495,23 @@ export function LeadDetailView({ leadId, mode, onClose, onUpdated }: Props) {
       </Card>
 
       <Card title="Proposal">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Use the proposal wizard for client share links, quote/proposal PDFs, accept → invoice → receipt.
+        </p>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setProposalOpen(true)}>
-            Generate proposal
+          <Link href={`/proposals/new?leadId=${encodeURIComponent(leadId)}`}>
+            <Button variant="secondary">Open proposal wizard</Button>
+          </Link>
+          <Button variant="outline" onClick={() => setProposalOpen(true)}>
+            Quick AI draft
           </Button>
           {proposalContent ? (
             <>
               <Button variant="outline" size="sm" onClick={() => void downloadPdf()}>
-                Download PDF
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy === "send" || !lead.email?.trim()}
-                title={!lead.email?.trim() ? "Add a contact email in Contact" : undefined}
-                onClick={() => void sendEmail("proposal")}
-              >
-                {busy === "send" ? "Sending…" : "Send to client"}
+                Quick PDF
               </Button>
               <Button variant="outline" size="sm" onClick={() => void saveProposal()}>
-                Save to CRM
+                Save draft to CRM
               </Button>
             </>
           ) : null}
