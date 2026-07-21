@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { Json } from "@/lib/db/database.types";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
-import { defaultCampaignSettings, newStep } from "@/lib/campaigns/defaults";
+import { defaultCampaignSettings, loadCampaignDefaults, newStep } from "@/lib/campaigns/defaults";
 import { loadCampaignChartSeries } from "@/lib/campaigns/chart-data";
 import { campaignRowToApi } from "@/lib/campaigns/serialize";
 import { parseCampaignSettings, parseSequence } from "@/lib/campaigns/parse";
@@ -53,7 +53,8 @@ export async function POST(req: Request) {
     }
     const p = parsed.data;
     const sequence = p.sequence?.length ? parseSequence(p.sequence) : [newStep({ delayKind: "immediate", delayDays: 0 })];
-    const mergedSettings = { ...defaultCampaignSettings(), ...(p.settings ?? {}) };
+    const baseDefaults = await loadCampaignDefaults().catch(() => defaultCampaignSettings());
+    const mergedSettings = { ...baseDefaults, ...(p.settings ?? {}) };
     const settings = parseCampaignSettings(mergedSettings as unknown as Json);
 
     const supabase = createServerSupabaseClient();

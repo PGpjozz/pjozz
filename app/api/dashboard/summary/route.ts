@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { publicApiError } from "@/lib/api-error";
 import type { DashboardSummaryResponse } from "@/lib/dashboard/summary-types";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
 
@@ -142,7 +143,6 @@ export async function GET() {
 
     return NextResponse.json({ ok: true as const, data });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Server error";
-    return NextResponse.json({ ok: false as const, error: msg }, { status: 500 });
+    return NextResponse.json({ ok: false as const, error: publicApiError(e) }, { status: 500 });
   }
 }

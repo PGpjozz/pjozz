@@ -57,6 +57,53 @@ Replace `APP_URL` with your public app origin (same as `NEXT_PUBLIC_APP_URL`).
 
 ---
 
+## WORKFLOW 1B — Web discovery (Google CSE) auto-import (daily / hourly)
+
+**Goal:** Let Pjozz itself discover leads online (via Google Programmable Search), extract contact emails from websites, dedupe, then create leads automatically.
+
+### Prereqs (env vars in the app)
+
+- `GOOGLE_CSE_API_KEY`
+- `GOOGLE_CSE_CX`
+- `N8N_INBOUND_SECRET` (or `OUTREACH_CRON_SECRET`) to protect the endpoint
+
+### n8n workflow
+
+1. **Trigger:** Schedule (e.g. daily 06:45 SAST or hourly in business hours)
+2. **HTTP Request — run discovery**
+   - Method: `POST`
+   - URL: `{APP_URL}/api/automation/discovery/run`
+   - Headers:
+     - `Authorization: Bearer {{$env.N8N_INBOUND_SECRET}}`
+     - `Content-Type: application/json`
+   - Body example:
+
+```json
+{
+  "presetLabel": "Tech startups (ZA)",
+  "serviceTypes": ["webapp", "software", "automation"],
+  "expand": true,
+  "maxPresetVariants": 15,
+  "totalMaxResults": 30,
+  "pageSize": 10,
+  "maxPages": 5,
+  "throttleMs": 250,
+  "maxPerQueryDomain": 10,
+  "maxImports": 10,
+  "dryRun": false
+}
+```
+
+3. **Optional**: Send a Slack summary with `createdCount` + top skipped reasons.
+
+**Notes**
+
+- This writes a log row to `discovery_runs` (Supabase) for each run (best-effort).
+- Use `dryRun: true` first to validate queries without inserting.
+- If you want maximum volume, increase `totalMaxResults`, `maxPages`, and run more often — but watch Google CSE quotas.
+
+---
+
 ## WORKFLOW 2 — Email sequence processor (hourly, Mon–Fri 8:00–17:00 SAST)
 
 **Goal:** Drive campaign sends during business hours.

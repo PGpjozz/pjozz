@@ -5,7 +5,8 @@ import { parseJsonObject } from "./parse-json";
 import { proposalContentOutputSchema } from "./schemas";
 import type { ProposalContent } from "./types";
 
-const TASK_PROMPT = `You are generating professional service proposals for Pjozz Technologies. Currency is ZAR. Be specific, confident, and results-focused.
+function taskPrompt(currency: string): string {
+  return `You are generating professional service proposals for Pjozz Technologies. Currency is ${currency}. Be specific, confident, and results-focused.
 
 Use the provided lead profile, discovery notes, and primary service type. Investment tiers should be realistic for SME / mid-market South Africa unless notes say otherwise.
 
@@ -22,7 +23,8 @@ Return JSON only with this exact shape:
   "nextSteps": string
 }
 
-Prices in investmentOptions.price are ZAR amounts as numbers (no symbols).`;
+Prices in investmentOptions.price are ${currency} amounts as numbers (no symbols).`;
+}
 
 export type GenerateProposalExtras = {
   budgetRange?: string;
@@ -35,11 +37,12 @@ export async function generateProposal(
   lead: Lead,
   discoveryNotes: string,
   serviceType: string,
-  extras?: GenerateProposalExtras
+  extras?: GenerateProposalExtras & { currency?: string }
 ): Promise<ProposalContent> {
+  const currency = extras?.currency?.trim() || "ZAR";
   const { text } = await runClaudeJsonTask({
     context: "generate-proposal",
-    taskSystemPrompt: TASK_PROMPT,
+    taskSystemPrompt: taskPrompt(currency),
     userPayload: compactJsonForAi({
       serviceType,
       discoveryNotes,
@@ -47,6 +50,7 @@ export async function generateProposal(
       timelinePreference: extras?.timelinePreference ?? null,
       specialRequirements: extras?.specialRequirements ?? null,
       pricingReference: extras?.pricingReference ?? null,
+      currency,
       lead: {
         companyName: lead.companyName,
         contactName: lead.contactName,

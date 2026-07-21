@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import type { ProposalContent } from "@/lib/ai/types";
 import type { Tables } from "@/lib/db/supabase";
+
+type ProposalDefaults = {
+  currency: string;
+  template: { sections: Array<{ key: string; title: string; enabled: boolean; defaultText?: string }> };
+};
 
 export function PublicProposalClient({
   proposal,
@@ -20,6 +25,36 @@ export function PublicProposalClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [showChanges, setShowChanges] = useState(false);
+  const [defaults, setDefaults] = useState<ProposalDefaults | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/settings/proposals.defaults", { cache: "no-store" });
+        const json = (await res.json()) as { ok: boolean; data?: { value: ProposalDefaults } };
+        if (json.ok && json.data?.value) setDefaults(json.data.value);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  const sectionMeta = useMemo(() => {
+    const fallback: ProposalDefaults["template"]["sections"] = [
+      { key: "executiveSummary", title: "Executive summary", enabled: true },
+      { key: "problemStatement", title: "The challenge", enabled: true },
+      { key: "proposedSolution", title: "Our approach", enabled: true },
+      { key: "deliverables", title: "Deliverables", enabled: true },
+      { key: "timeline", title: "Timeline", enabled: true },
+      { key: "investmentOptions", title: "Investment", enabled: true },
+      { key: "whyPjozz", title: "Why Pjozz", enabled: true },
+      { key: "nextSteps", title: "Next steps", enabled: true },
+    ];
+    const list = defaults?.template?.sections?.length ? defaults.template.sections : fallback;
+    return list.filter((s) => s.enabled !== false);
+  }, [defaults]);
+
+  const currency = defaults?.currency ?? (proposal.currency ?? "ZAR");
 
   async function accept() {
     setBusy("accept");
@@ -81,49 +116,66 @@ export function PublicProposalClient({
 
       <main className="mx-auto max-w-3xl px-6 py-10">
         <h1 className="font-serif text-3xl font-semibold text-zinc-900">{document.title}</h1>
-        <p className="mt-2 text-sm text-zinc-500">Prepared for your review · ZAR pricing</p>
+        <p className="mt-2 text-sm text-zinc-500">Prepared for your review · {currency} pricing</p>
 
         <article className="mt-10 space-y-10 text-[15px] leading-relaxed">
-          <Section title="Executive summary" body={document.executiveSummary} />
-          <Section title="The challenge" body={document.problemStatement} />
-          <Section title="Our approach" body={document.proposedSolution} />
-          <section>
-            <h2 className="border-b border-zinc-200 pb-2 font-semibold text-zinc-900">Deliverables</h2>
-            <ul className="mt-4 list-disc space-y-2 pl-5">
-              {document.deliverables.map((d, i) => (
-                <li key={i}>
-                  <strong>{d.item}</strong> — {d.description}
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section>
-            <h2 className="border-b border-zinc-200 pb-2 font-semibold text-zinc-900">Timeline</h2>
-            <div className="mt-4 space-y-3">
-              {document.timeline.map((t, i) => (
-                <div key={i} className="rounded-lg border border-zinc-200 bg-white p-3">
-                  <p className="font-medium text-zinc-900">
-                    {t.phase} <span className="text-zinc-500">({t.duration})</span>
-                  </p>
-                  <p className="mt-1 text-zinc-600">{t.description}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-          <section>
-            <h2 className="border-b border-zinc-200 pb-2 font-semibold text-zinc-900">Investment</h2>
-            <div className="mt-4 space-y-4">
-              {document.investmentOptions.map((o, i) => (
-                <div key={i} className="rounded-lg border border-zinc-200 bg-white p-4">
-                  <p className="text-lg font-semibold text-[#00a67e]">R {o.price.toLocaleString("en-ZA")}</p>
-                  <p className="font-medium text-zinc-900">{o.tier}</p>
-                  <p className="mt-1 text-zinc-600">{o.description}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-          <Section title="Why Pjozz" body={document.whyPjozz} />
-          <Section title="Next steps" body={document.nextSteps} />
+          {sectionMeta.map((s) => {
+            if (s.key === "executiveSummary") return <Section key={s.key} title={s.title} body={document.executiveSummary} />;
+            if (s.key === "problemStatement") return <Section key={s.key} title={s.title} body={document.problemStatement} />;
+            if (s.key === "proposedSolution") return <Section key={s.key} title={s.title} body={document.proposedSolution} />;
+            if (s.key === "whyPjozz") return <Section key={s.key} title={s.title} body={document.whyPjozz} />;
+            if (s.key === "nextSteps") return <Section key={s.key} title={s.title} body={document.nextSteps} />;
+            if (s.key === "deliverables") {
+              return (
+                <section key={s.key}>
+                  <h2 className="border-b border-zinc-200 pb-2 font-semibold text-zinc-900">{s.title}</h2>
+                  <ul className="mt-4 list-disc space-y-2 pl-5">
+                    {document.deliverables.map((d, i) => (
+                      <li key={i}>
+                        <strong>{d.item}</strong> — {d.description}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            }
+            if (s.key === "timeline") {
+              return (
+                <section key={s.key}>
+                  <h2 className="border-b border-zinc-200 pb-2 font-semibold text-zinc-900">{s.title}</h2>
+                  <div className="mt-4 space-y-3">
+                    {document.timeline.map((t, i) => (
+                      <div key={i} className="rounded-lg border border-zinc-200 bg-white p-3">
+                        <p className="font-medium text-zinc-900">
+                          {t.phase} <span className="text-zinc-500">({t.duration})</span>
+                        </p>
+                        <p className="mt-1 text-zinc-600">{t.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            }
+            if (s.key === "investmentOptions") {
+              return (
+                <section key={s.key}>
+                  <h2 className="border-b border-zinc-200 pb-2 font-semibold text-zinc-900">{s.title}</h2>
+                  <div className="mt-4 space-y-4">
+                    {document.investmentOptions.map((o, i) => (
+                      <div key={i} className="rounded-lg border border-zinc-200 bg-white p-4">
+                        <p className="text-lg font-semibold text-[#00a67e]">
+                          {currency} {o.price.toLocaleString("en-ZA")}
+                        </p>
+                        <p className="font-medium text-zinc-900">{o.tier}</p>
+                        <p className="mt-1 text-zinc-600">{o.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            }
+            return null;
+          })}
         </article>
 
         <div className="mt-12 flex flex-col gap-3 border-t border-zinc-200 pt-8 sm:flex-row sm:items-center">

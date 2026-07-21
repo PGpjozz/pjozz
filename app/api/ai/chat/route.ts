@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { logAnthropicUsage, streamClaudeChat } from "@/lib/ai/claude";
 import { chatMessageSchema } from "@/lib/ai/schemas";
+import { getSetting } from "@/lib/settings/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,16 @@ Help the team with leads, pipeline, outreach, proposals, and delivery — concis
 Assume South African context (ZAR, local SMB norms) unless told otherwise.`;
 
 export async function POST(req: Request) {
+  try {
+    const flags = await getSetting("features.flags");
+    if (flags.enableAi === false) {
+      return NextResponse.json({ ok: false as const, error: "AI is disabled in settings." }, { status: 503 });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Server error";
+    return NextResponse.json({ ok: false as const, error: msg }, { status: 500 });
+  }
+
   let json: unknown;
   try {
     json = await req.json();

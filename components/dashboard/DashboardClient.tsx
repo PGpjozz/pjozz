@@ -14,6 +14,7 @@ import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 
 function alertTone(p: string) {
   switch (p) {
@@ -29,6 +30,7 @@ function alertTone(p: string) {
 }
 
 export function DashboardClient() {
+  const { flags } = useFeatureFlags();
   const [brief, setBrief] = useState<DailyBrief | null>(null);
   const [briefLoading, setBriefLoading] = useState(true);
   const [briefBusy, setBriefBusy] = useState(false);
@@ -56,6 +58,10 @@ export function DashboardClient() {
     (async () => {
       setBriefLoading(true);
       try {
+        if (!flags.enableAi) {
+          setBrief(null);
+          return;
+        }
         await loadBrief();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Could not load brief");
@@ -63,7 +69,7 @@ export function DashboardClient() {
         setBriefLoading(false);
       }
     })();
-  }, [loadBrief]);
+  }, [loadBrief, flags.enableAi]);
 
   useEffect(() => {
     (async () => {
@@ -82,6 +88,7 @@ export function DashboardClient() {
     const id = window.setInterval(() => {
       void (async () => {
         try {
+          if (!flags.enableAi) return;
           await loadBrief({ refresh: false });
           setInsightRefresh((t) => t + 1);
         } catch {
@@ -90,9 +97,13 @@ export function DashboardClient() {
       })();
     }, 30 * 60 * 1000);
     return () => window.clearInterval(id);
-  }, [loadBrief]);
+  }, [loadBrief, flags.enableAi]);
 
   const regenerate = async () => {
+    if (!flags.enableAi) {
+      toast.error("AI is disabled in Settings.");
+      return;
+    }
     setBriefBusy(true);
     try {
       await loadBrief({ refresh: true });
@@ -127,7 +138,14 @@ export function DashboardClient() {
                   <h2 className="mt-1 font-heading text-lg font-semibold text-foreground">AI daily brief</h2>
                   <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
                 </div>
-                <Button type="button" size="sm" variant="secondary" disabled={briefBusy || briefLoading} onClick={() => void regenerate()}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={briefBusy || briefLoading || !flags.enableAi}
+                  onClick={() => void regenerate()}
+                  title={!flags.enableAi ? "AI is disabled in Settings" : "Regenerate brief"}
+                >
                   <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                   {briefBusy ? "Working…" : "Regenerate"}
                 </Button>
@@ -145,6 +163,8 @@ export function DashboardClient() {
                   </div>
                   <div className="h-24 rounded-lg bg-muted" />
                 </div>
+              ) : !flags.enableAi ? (
+                <p className="text-sm text-muted-foreground">AI is disabled in Settings.</p>
               ) : brief ? (
                 <div className="space-y-6">
                   <div>

@@ -17,13 +17,14 @@ const leadServiceType = z.enum([
 const sendWindowSchema = z.object({
   weekdays: z.array(z.number().int().min(1).max(7)).min(1),
   startHour: z.number().int().min(0).max(23),
-  endHour: z.number().int().min(0).max(23),
+  /** Exclusive end hour; 24 = through end of day (matches settings registry). */
+  endHour: z.number().int().min(1).max(24),
   timezone: z.string().min(1),
 });
 
 const settingsSchema = z.object({
   sendWindow: sendWindowSchema,
-  dailySendLimit: z.number().int().min(1).max(5000),
+  dailySendLimit: z.number().int().min(1).max(10_000),
   pauseOnReply: z.boolean(),
   blocklistOnUnsubscribe: z.boolean(),
   serviceFocus: leadServiceType.optional(),

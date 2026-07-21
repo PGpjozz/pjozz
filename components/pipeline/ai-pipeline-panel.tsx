@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -22,6 +23,7 @@ export function AiPipelinePanel({
   dailyBriefSummary,
   dailyBriefLoading,
 }: Props) {
+  const { flags } = useFeatureFlags();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -30,6 +32,7 @@ export function AiPipelinePanel({
 
   const send = useCallback(
     async (userText: string) => {
+      if (!flags.enableAi) return;
       const trimmed = userText.trim();
       if (!trimmed || busyRef.current) return;
       busyRef.current = true;
@@ -111,13 +114,18 @@ export function AiPipelinePanel({
         setStreaming(false);
       }
     },
-    [pipelineContext]
+    [pipelineContext, flags.enableAi]
   );
 
   if (!open) return null;
 
   return (
     <aside className="flex w-full max-w-md shrink-0 flex-col border-l border-border bg-[#0A0A0A] shadow-xl">
+      {!flags.enableAi ? (
+        <div className="border-b border-border bg-card/30 p-4 text-sm text-muted-foreground">
+          AI is disabled in Settings.
+        </div>
+      ) : null}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="font-heading text-sm font-semibold text-primary">AI pipeline assistant</h2>
         <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={onClose}>

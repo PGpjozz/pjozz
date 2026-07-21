@@ -1,13 +1,17 @@
 /**
  * Outbound calls from Pjozz → self-hosted n8n (Webhook trigger nodes).
- * Base URL: `N8N_BASE_URL` (default http://localhost:5678).
+ * Base URL: `N8N_BASE_URL` or legacy `N8N_WEBHOOK_BASE_URL` (default http://localhost:5678).
  * Optional `N8N_WEBHOOK_CALL_SECRET` sent as `Authorization: Bearer …` if n8n expects it.
  */
 
 const DEFAULT_N8N_BASE = "http://localhost:5678";
 
-function n8nBaseUrl(): string {
-  return (process.env.N8N_BASE_URL ?? DEFAULT_N8N_BASE).replace(/\/$/, "");
+export function n8nBaseUrl(): string {
+  const raw =
+    process.env.N8N_BASE_URL?.trim() ||
+    process.env.N8N_WEBHOOK_BASE_URL?.trim() ||
+    DEFAULT_N8N_BASE;
+  return raw.replace(/\/$/, "");
 }
 
 /**

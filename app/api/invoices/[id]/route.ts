@@ -49,7 +49,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if ("dueAt" in parsed.data) patch.due_at = parsed.data.dueAt ?? null;
     if ("notes" in parsed.data) patch.notes = parsed.data.notes ?? null;
 
-    const { data, error } = await supabase.from("invoices").update(patch).eq("id", id).select("*").single();
+    const { data, error } = await supabase
+      .from("invoices")
+      .update(patch)
+      .eq("id", id)
+      .select("*, clients ( company_name, email ), invoice_items ( * )")
+      .single();
     if (error) throw new Error(error.message);
     return NextResponse.json({ ok: true as const, data });
   } catch (e) {

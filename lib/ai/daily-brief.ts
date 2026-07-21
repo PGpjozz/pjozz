@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AIInsight } from "@/types";
 
 import { createServerSupabaseClient } from "@/lib/db/supabase";
+import { getSetting } from "@/lib/settings/store";
 
 import { compactJsonForAi, runClaudeJsonTask } from "./claude";
 import { parseJsonObject } from "./parse-json";
@@ -49,9 +50,10 @@ const ACTIVE_LEAD_SET = new Set<string>(ACTIVE_LEAD_STATUSES);
 export async function buildDashboardSnapshot(): Promise<DashboardSnapshot> {
   const supabase = createServerSupabaseClient();
   const now = Date.now();
-  const fiveAgo = new Date(now - 5 * 86_400_000).toISOString();
-  const fourteenAgo = new Date(now - 14 * 86_400_000).toISOString();
-  const twoAgo = new Date(now - 2 * 86_400_000).toISOString();
+  const thresholds = await getSetting("ai.lead_thresholds");
+  const fiveAgo = new Date(now - (thresholds.staleLeadDays ?? 5) * 86_400_000).toISOString();
+  const fourteenAgo = new Date(now - (thresholds.riskyDealDaysInStage ?? 14) * 86_400_000).toISOString();
+  const twoAgo = new Date(now - (thresholds.followUpGraceDays ?? 2) * 86_400_000).toISOString();
   const thirtyAgo = new Date(now - 30 * 86_400_000).toISOString();
 
   const { count: totalLeadsCount, error: countErr } = await supabase
@@ -142,7 +144,7 @@ export async function buildDashboardSnapshot(): Promise<DashboardSnapshot> {
   const hotLeadsNotFollowedUp = leads
     .filter(
       (l) =>
-        l.lead_score >= 70 &&
+        l.lead_score >= (thresholds.hotLeadScore ?? 70) &&
         (l.status === "new" || l.status === "contacted") &&
         l.updated_at < twoAgo
     )

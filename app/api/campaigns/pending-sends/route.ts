@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { assertAutomationInbound } from "@/lib/automation/auth";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
+import { getSetting } from "@/lib/settings/store";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,11 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request) {
   try {
+    const flags = await getSetting("features.flags");
+    if (flags.enableOutreachAutomation === false) {
+      return NextResponse.json({ ok: true as const, data: { campaigns: [] as { id: string }[] } });
+    }
+
     assertAutomationInbound(req);
     const supabase = createServerSupabaseClient();
     const now = new Date().toISOString();

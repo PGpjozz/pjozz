@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getLeadById } from "@/lib/db/supabase";
 import { sendTransactionalEmail } from "@/lib/email/resend";
+import { getSetting } from "@/lib/settings/store";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,11 @@ const bodySchema = z.object({
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const flags = await getSetting("features.flags");
+    if (flags.enableResendEmail === false) {
+      return NextResponse.json({ ok: false as const, error: "Email sending is disabled in settings." }, { status: 503 });
+    }
+
     const { id } = await params;
     const lead = await getLeadById(id);
     if (!lead?.email) {

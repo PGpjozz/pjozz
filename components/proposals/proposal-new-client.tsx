@@ -14,6 +14,7 @@ import { SERVICE_LABEL } from "@/components/leads/lead-constants";
 import { proposalContentOutputSchema } from "@/lib/ai/schemas";
 import { PRICING_TEMPLATE_REFERENCE } from "@/lib/proposals/pricing-templates";
 import { SECTION_LABELS } from "@/lib/proposals/stream-sections";
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 
 const BUDGETS = ["Under R50k", "R50k–R150k", "R150k–R500k", "R500k+"] as const;
 const TIMELINES = ["ASAP", "1–3 months", "3–6 months", "Flexible"] as const;
@@ -35,6 +36,7 @@ export function ProposalNewClient() {
   const router = useRouter();
   const sp = useSearchParams();
   const existingId = sp.get("id");
+  const { flags } = useFeatureFlags();
 
   const [step, setStep] = useState(1);
   const [proposalId, setProposalId] = useState<string | null>(null);
@@ -138,6 +140,10 @@ export function ProposalNewClient() {
   }
 
   async function runStream() {
+    if (!flags.enableAi) {
+      toast.error("AI is disabled in Settings.");
+      return;
+    }
     if (!proposalId) return;
     setGenBusy(true);
     setStreamLog({});
@@ -204,6 +210,10 @@ export function ProposalNewClient() {
   }
 
   async function sendProposal() {
+    if (!flags.enableResendEmail) {
+      toast.error("Email sending is disabled in Settings.");
+      return;
+    }
     if (!proposalId) return;
     await saveDocument();
     const res = await fetch(`/api/proposals/${proposalId}/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
@@ -214,6 +224,10 @@ export function ProposalNewClient() {
   }
 
   async function improve(section: keyof ProposalContent) {
+    if (!flags.enableAi) {
+      toast.error("AI is disabled in Settings.");
+      return;
+    }
     if (!proposalId || !doc) return;
     const res = await fetch("/api/ai/improve-proposal-section", {
       method: "POST",
@@ -360,7 +374,7 @@ export function ProposalNewClient() {
             <Button variant="ghost" onClick={() => setStep(2)}>
               Back
             </Button>
-            <Button disabled={genBusy} onClick={() => void runStream()}>
+            <Button disabled={genBusy || !flags.enableAi} title={!flags.enableAi ? "AI is disabled in Settings" : "Generate proposal"} onClick={() => void runStream()}>
               {genBusy ? "Generating…" : "Generate proposal"}
             </Button>
           </div>
@@ -371,11 +385,41 @@ export function ProposalNewClient() {
         <div className="space-y-6 rounded-xl border border-border bg-card/30 p-4">
           <h2 className="font-heading text-sm font-semibold text-primary">4 · Review & edit</h2>
           <TextBlock label="Title" value={doc.title} onChange={(v) => setDoc({ ...doc, title: v })} improveDisabled />
-          <TextBlock label="Executive summary" value={doc.executiveSummary} onChange={(v) => setDoc({ ...doc, executiveSummary: v })} onImprove={() => void improve("executiveSummary")} />
-          <TextBlock label="Problem" value={doc.problemStatement} onChange={(v) => setDoc({ ...doc, problemStatement: v })} onImprove={() => void improve("problemStatement")} />
-          <TextBlock label="Solution" value={doc.proposedSolution} onChange={(v) => setDoc({ ...doc, proposedSolution: v })} onImprove={() => void improve("proposedSolution")} />
-          <TextBlock label="Why Pjozz" value={doc.whyPjozz} onChange={(v) => setDoc({ ...doc, whyPjozz: v })} onImprove={() => void improve("whyPjozz")} />
-          <TextBlock label="Next steps" value={doc.nextSteps} onChange={(v) => setDoc({ ...doc, nextSteps: v })} onImprove={() => void improve("nextSteps")} />
+          <TextBlock
+            label="Executive summary"
+            value={doc.executiveSummary}
+            onChange={(v) => setDoc({ ...doc, executiveSummary: v })}
+            onImprove={flags.enableAi ? () => void improve("executiveSummary") : undefined}
+            improveDisabled={!flags.enableAi}
+          />
+          <TextBlock
+            label="Problem"
+            value={doc.problemStatement}
+            onChange={(v) => setDoc({ ...doc, problemStatement: v })}
+            onImprove={flags.enableAi ? () => void improve("problemStatement") : undefined}
+            improveDisabled={!flags.enableAi}
+          />
+          <TextBlock
+            label="Solution"
+            value={doc.proposedSolution}
+            onChange={(v) => setDoc({ ...doc, proposedSolution: v })}
+            onImprove={flags.enableAi ? () => void improve("proposedSolution") : undefined}
+            improveDisabled={!flags.enableAi}
+          />
+          <TextBlock
+            label="Why Pjozz"
+            value={doc.whyPjozz}
+            onChange={(v) => setDoc({ ...doc, whyPjozz: v })}
+            onImprove={flags.enableAi ? () => void improve("whyPjozz") : undefined}
+            improveDisabled={!flags.enableAi}
+          />
+          <TextBlock
+            label="Next steps"
+            value={doc.nextSteps}
+            onChange={(v) => setDoc({ ...doc, nextSteps: v })}
+            onImprove={flags.enableAi ? () => void improve("nextSteps") : undefined}
+            improveDisabled={!flags.enableAi}
+          />
           <DeliverablesEditor doc={doc} setDoc={setDoc} />
           <TimelineEditor doc={doc} setDoc={setDoc} />
           <PricingEditor doc={doc} setDoc={setDoc} />
@@ -399,7 +443,13 @@ export function ProposalNewClient() {
             <p className="mt-2">Preview matches the client-facing page after you send.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void sendProposal().catch((e) => toast.error(String(e)))}>Send via email</Button>
+            <Button
+              disabled={!flags.enableResendEmail}
+              title={!flags.enableResendEmail ? "Email sending is disabled in Settings" : "Send via email"}
+              onClick={() => void sendProposal().catch((e) => toast.error(String(e)))}
+            >
+              Send via email
+            </Button>
             <Button
               variant="outline"
               type="button"
@@ -442,7 +492,7 @@ function TextBlock({
       <div className="mb-1 flex items-center justify-between gap-2">
         <label className="text-xs uppercase text-muted-foreground">{label}</label>
         {!improveDisabled && onImprove ? (
-          <button type="button" className="text-[10px] text-primary hover:underline" onClick={onImprove}>
+          <button type="button" className="text-[10px] text-primary hover:underline" onClick={onImprove} disabled={!onImprove}>
             Improve with AI
           </button>
         ) : null}

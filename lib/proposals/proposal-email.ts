@@ -1,9 +1,7 @@
+import { getAppOrigin } from "@/lib/app-url";
+
 function appOrigin(): string {
-  const u = process.env.NEXT_PUBLIC_APP_URL;
-  if (u) return u.replace(/\/$/, "");
-  const v = process.env.VERCEL_URL;
-  if (v) return `https://${v.replace(/\/$/, "")}`;
-  return "http://localhost:3000";
+  return getAppOrigin();
 }
 
 export function buildProposalClientEmailHtml(opts: {

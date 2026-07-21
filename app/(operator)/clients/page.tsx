@@ -1,15 +1,14 @@
 import { OperatorShell } from "@/components/shared/operator-shell";
+import { ClientsPageClient } from "@/components/clients/clients-page-client";
 
 export default function ClientsPage() {
   return (
     <OperatorShell
-      title="Client portal management"
-      description="Active projects, retainers, and revenue rolled up from won leads."
+      title="Clients"
+      description="Active accounts for billing, retainers, and won work."
+      showHeader={false}
     >
-      <p className="text-sm text-muted-foreground">
-        Map <code className="rounded bg-muted px-1 py-0.5 text-xs">Client</code> rows to Supabase and
-        optionally expose a client-facing portal route later.
-      </p>
+      <ClientsPageClient />
     </OperatorShell>
   );
 }

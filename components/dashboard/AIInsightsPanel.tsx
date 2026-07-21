@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type { Tables } from "@/lib/db/supabase";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 
 type InsightRow = Tables<"ai_insights">;
 
@@ -31,15 +32,21 @@ export function AIInsightsPanel({
   /** Increment when the daily brief is regenerated so unread insights reload. */
   refreshToken?: number;
 }) {
+  const { flags } = useFeatureFlags();
   const [insights, setInsights] = useState<InsightRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!flags.enableAi) {
+      setInsights([]);
+      setLoading(false);
+      return;
+    }
     const res = await fetch("/api/ai/insights?unread=true");
     const json = (await res.json()) as { ok: boolean; data?: { insights: InsightRow[] } };
     if (json.ok && json.data) setInsights(json.data.insights);
     setLoading(false);
-  }, []);
+  }, [flags.enableAi]);
 
   useEffect(() => {
     void load();
@@ -55,6 +62,7 @@ export function AIInsightsPanel({
   }, [load]);
 
   const markAll = async () => {
+    if (!flags.enableAi) return;
     const res = await fetch("/api/ai/insights/mark-read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -68,6 +76,7 @@ export function AIInsightsPanel({
   };
 
   const markOne = async (id: string) => {
+    if (!flags.enableAi) return;
     await fetch("/api/ai/insights/mark-read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -80,7 +89,15 @@ export function AIInsightsPanel({
     <aside className={cn("flex flex-col rounded-xl border border-border bg-card/40", className)}>
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h3 className="font-heading text-sm font-semibold text-foreground">AI insights</h3>
-        <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={() => void markAll()}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => void markAll()}
+          disabled={!flags.enableAi}
+          title={!flags.enableAi ? "AI is disabled in Settings" : "Mark all read"}
+        >
           Mark all read
         </Button>
       </div>
@@ -96,7 +113,9 @@ export function AIInsightsPanel({
             ))}
           </div>
         ) : insights.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No unread insights. Run the daily brief to generate more.</p>
+          <p className="text-sm text-muted-foreground">
+            {flags.enableAi ? "No unread insights. Run the daily brief to generate more." : "AI is disabled in Settings."}
+          </p>
         ) : (
           <>
           {insights.map((row) => (

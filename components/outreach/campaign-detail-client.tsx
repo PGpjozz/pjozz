@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 import type { Campaign, OutreachSequenceStep } from "@/types";
 
 import { CampaignLeadsTable, type EnrollmentRow } from "./campaign-leads-table";
@@ -12,6 +13,7 @@ import { CampaignSettingsForm } from "./campaign-settings-form";
 import { SequenceBuilder } from "./sequence-builder";
 
 export function CampaignDetailClient({ id }: { id: string }) {
+  const { flags } = useFeatureFlags();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
   const [steps, setSteps] = useState<OutreachSequenceStep[]>([]);
@@ -106,8 +108,14 @@ export function CampaignDetailClient({ id }: { id: string }) {
           <Button
             type="button"
             variant="secondary"
+            disabled={!flags.enableOutreachAutomation}
+            title={!flags.enableOutreachAutomation ? "Outreach automation is disabled in Settings" : "Run send-next batch"}
             onClick={async () => {
               try {
+                if (!flags.enableOutreachAutomation) {
+                  toast.error("Outreach automation is disabled in Settings.");
+                  return;
+                }
                 const secret = prompt("Optional: paste OUTREACH_CRON_SECRET for auth (leave empty if unset in env)");
                 const headers: Record<string, string> = { "Content-Type": "application/json" };
                 if (secret) headers.Authorization = `Bearer ${secret}`;

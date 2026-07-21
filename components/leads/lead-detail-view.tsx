@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 
 import type { LeadAnalysis } from "@/lib/ai/types";
 import type { ProposalContent } from "@/lib/ai/types";
@@ -51,6 +52,7 @@ type Props = {
 };
 
 export function LeadDetailView({ leadId, mode, onClose, onUpdated }: Props) {
+  const { flags } = useFeatureFlags();
   const [lead, setLead] = useState<LeadApi | null>(null);
   const [outreach, setOutreach] = useState<OutreachRow[]>([]);
   const [pipeline, setPipeline] = useState<PipelineRow | null>(null);
@@ -107,6 +109,10 @@ export function LeadDetailView({ leadId, mode, onClose, onUpdated }: Props) {
   }
 
   async function reanalyze() {
+    if (!flags.enableAi) {
+      toast.error("AI is disabled in Settings.");
+      return;
+    }
     if (!lead) return;
     setBusy("analyze");
     try {
@@ -158,6 +164,10 @@ export function LeadDetailView({ leadId, mode, onClose, onUpdated }: Props) {
   }
 
   async function generateEmail() {
+    if (!flags.enableAi) {
+      toast.error("AI is disabled in Settings.");
+      return;
+    }
     if (!lead) return;
     setBusy("email");
     try {
@@ -177,6 +187,10 @@ export function LeadDetailView({ leadId, mode, onClose, onUpdated }: Props) {
   }
 
   async function generateProposalAi() {
+    if (!flags.enableAi) {
+      toast.error("AI is disabled in Settings.");
+      return;
+    }
     if (!lead || !proposalNotes.trim()) return;
     setBusy("proposal");
     try {
@@ -242,6 +256,10 @@ export function LeadDetailView({ leadId, mode, onClose, onUpdated }: Props) {
   }
 
   async function sendEmail(kind: "draft" | "proposal") {
+    if (!flags.enableResendEmail) {
+      toast.error("Email sending is disabled in Settings.");
+      return;
+    }
     if (!lead?.email?.trim()) {
       toast.error("Add a contact email for this lead before sending.");
       return;

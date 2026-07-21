@@ -1,17 +1,11 @@
+import { getAppOrigin } from "@/lib/app-url";
 import { createServerSupabaseClient, type Tables } from "@/lib/db/supabase";
 import { sendEmail } from "@/lib/email/resend";
+import { getSetting } from "@/lib/settings/store";
 import { sendWhatsAppMessage, stripHtmlForWhatsApp } from "@/lib/whatsapp/twilio";
 import { addDaysIso, isWithinSendWindow } from "@/lib/campaigns/send-window";
 import { parseCampaignSettings, parseSequence } from "@/lib/campaigns/parse";
 import type { OutreachSequenceStep } from "@/types";
-
-function appBaseUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL;
-  if (explicit) return explicit.replace(/\/$/, "");
-  const vercel = process.env.VERCEL_URL;
-  if (vercel) return `https://${vercel.replace(/\/$/, "")}`;
-  throw new Error("NEXT_PUBLIC_APP_URL or VERCEL_URL is required for email tracking links");
-}
 
 function utcDayStartIso(d = new Date()): string {
   const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
@@ -88,7 +82,8 @@ export async function runCampaignSendNext(campaignId: string): Promise<{
   const rows = enrollments ?? [];
 
   let sent = 0;
-  const baseUrl = appBaseUrl();
+  const baseUrl = getAppOrigin({ required: true });
+  const flags = await getSetting("features.flags");
 
   for (const row of rows) {
     if (remaining <= 0) break;
@@ -127,6 +122,10 @@ export async function runCampaignSendNext(campaignId: string): Promise<{
 
     try {
       if (step.channel === "email") {
+        if (flags.enableResendEmail === false) {
+          errors.push(`skip ${lead.id}: email sending disabled in settings`);
+          continue;
+        }
         if (!lead.email?.trim() || !step.body?.trim()) {
           errors.push(`skip ${lead.id}: missing email or body`);
           continue;
@@ -158,6 +157,10 @@ export async function runCampaignSendNext(campaignId: string): Promise<{
           metadata: { enrollment_id: row.id, step_index: stepIndex, resend_email_id: resendId },
         });
       } else if (step.channel === "whatsapp") {
+        if (flags.enableWhatsApp === false) {
+          errors.push(`skip ${lead.id}: WhatsApp disabled in settings`);
+          continue;
+        }
         const to = lead.whatsapp?.trim() || lead.phone?.trim();
         if (!to || !step.body?.trim()) {
           errors.push(`skip ${lead.id}: missing whatsapp/phone or body`);

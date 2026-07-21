@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getLeadById } from "@/lib/db/supabase";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/twilio";
+import { getSetting } from "@/lib/settings/store";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,11 @@ const bodySchema = z.object({
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const flags = await getSetting("features.flags");
+    if (flags.enableWhatsApp === false) {
+      return NextResponse.json({ ok: false as const, error: "WhatsApp is disabled in settings." }, { status: 503 });
+    }
+
     const { id } = await params;
     const lead = await getLeadById(id);
     if (!lead) return NextResponse.json({ ok: false as const, error: "Lead not found" }, { status: 404 });

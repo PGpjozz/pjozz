@@ -42,6 +42,10 @@ export function BillingPageClient() {
   const [loading, setLoading] = useState(true);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [creating, setCreating] = useState(false);
+  const [addingClient, setAddingClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [showAddClient, setShowAddClient] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,10 +54,12 @@ export function BillingPageClient() {
         fetch("/api/clients?page=1&pageSize=100"),
         fetch("/api/invoices?page=1&pageSize=100"),
       ]);
-      const cj = (await cr.json()) as { ok: boolean; data?: { clients: ClientRow[] } };
-      const ij = (await ir.json()) as { ok: boolean; data?: { invoices: InvoiceRow[] } };
-      if (cj.ok && cj.data) setClients(cj.data.clients);
-      if (ij.ok && ij.data) setInvoices(ij.data.invoices);
+      const cj = (await cr.json()) as { ok: boolean; data?: { clients: ClientRow[] }; error?: string };
+      const ij = (await ir.json()) as { ok: boolean; data?: { invoices: InvoiceRow[] }; error?: string };
+      if (!cj.ok) throw new Error(cj.error ?? "Failed to load clients");
+      if (!ij.ok) throw new Error(ij.error ?? "Failed to load invoices");
+      if (cj.data) setClients(cj.data.clients);
+      if (ij.data) setInvoices(ij.data.invoices);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load billing data");
     } finally {
@@ -79,6 +85,43 @@ export function BillingPageClient() {
     };
   }, [filteredInvoices]);
 
+  const createClient = async () => {
+    const name = newClientName.trim();
+    if (!name) {
+      toast.error("Company name is required.");
+      return;
+    }
+    setAddingClient(true);
+    try {
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: name,
+          email: newClientEmail.trim() || undefined,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        data?: { client: ClientRow };
+      };
+      if (!res.ok || data.ok === false || !data.data?.client) {
+        throw new Error(data.error ?? "Create client failed");
+      }
+      toast.success("Client created.");
+      setNewClientName("");
+      setNewClientEmail("");
+      setShowAddClient(false);
+      setSelectedClientId(data.data.client.id);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Create client failed");
+    } finally {
+      setAddingClient(false);
+    }
+  };
+
   const createDraftInvoice = async () => {
     if (!selectedClientId) {
       toast.error("Select a client first.");
@@ -92,7 +135,6 @@ export function BillingPageClient() {
         body: JSON.stringify({
           clientId: selectedClientId,
           items: [{ description: "Project deposit / milestone", quantity: 1, unitPrice: 0 }],
-          vatRate: 0.15,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
@@ -128,11 +170,41 @@ export function BillingPageClient() {
               </option>
             ))}
           </select>
+          <Button variant="outline" onClick={() => setShowAddClient((v) => !v)} disabled={loading}>
+            {showAddClient ? "Cancel" : "Add client"}
+          </Button>
           <Button onClick={() => void createDraftInvoice()} disabled={creating || loading || !selectedClientId}>
             {creating ? "Creating…" : "New invoice"}
           </Button>
         </div>
       </div>
+
+      {showAddClient ? (
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card/40 p-4">
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            Company name
+            <input
+              className="pj-input w-[220px] py-2 text-sm text-foreground"
+              value={newClientName}
+              onChange={(e) => setNewClientName(e.target.value)}
+              placeholder="Acme (Pty) Ltd"
+            />
+          </label>
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            Email (optional)
+            <input
+              className="pj-input w-[220px] py-2 text-sm text-foreground"
+              value={newClientEmail}
+              onChange={(e) => setNewClientEmail(e.target.value)}
+              placeholder="billing@acme.co.za"
+              type="email"
+            />
+          </label>
+          <Button onClick={() => void createClient()} disabled={addingClient || !newClientName.trim()}>
+            {addingClient ? "Saving…" : "Save client"}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-card/40 p-4">

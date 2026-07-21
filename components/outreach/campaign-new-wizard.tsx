@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 import type { LeadApi } from "@/lib/leads/mappers";
 import { defaultCampaignSettings, newStep } from "@/lib/campaigns/defaults";
 import { buildSyntheticLeadForAi } from "@/lib/campaigns/synthetic-lead";
@@ -27,6 +28,7 @@ const EMAIL_TYPES = ["initial", "followup1", "followup2", "breakup"] as const;
 
 export function CampaignNewWizard() {
   const router = useRouter();
+  const { flags } = useFeatureFlags();
   const [step, setStep] = useState(1);
   const [serviceFocus, setServiceFocus] = useState<LeadServiceType>("webapp");
   const [csv, setCsv] = useState("");
@@ -104,6 +106,10 @@ export function CampaignNewWizard() {
   }
 
   async function runAiSequence() {
+    if (!flags.enableAi) {
+      toast.error("AI is disabled in Settings.");
+      return;
+    }
     setGenBusy(true);
     try {
       const lead = buildSyntheticLeadForAi(serviceFocus, campaignName || "Target account");
@@ -274,7 +280,12 @@ export function CampaignNewWizard() {
             <Button type="button" variant="ghost" onClick={() => setStep(1)}>
               Back
             </Button>
-            <Button type="button" disabled={genBusy} onClick={() => void runAiSequence()}>
+            <Button
+              type="button"
+              disabled={genBusy || !flags.enableAi}
+              title={!flags.enableAi ? "AI is disabled in Settings" : "Generate sequence"}
+              onClick={() => void runAiSequence()}
+            >
               {genBusy ? "Generating…" : "Generate sequence"}
             </Button>
           </div>

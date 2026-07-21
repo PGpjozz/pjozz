@@ -6,6 +6,7 @@ import { leadRowToApiLeadForAi } from "@/lib/proposals/ai-lead";
 import { allPricingTemplatesSummary, pricingHintForServiceType } from "@/lib/proposals/pricing-templates";
 import { proposalContentToRowPatch } from "@/lib/proposals/document";
 import { PROPOSAL_STREAM_KEYS, SECTION_LABELS, sleep } from "@/lib/proposals/stream-sections";
+import { getSetting } from "@/lib/settings/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
       };
       try {
+        const flags = await getSetting("features.flags");
+        if (flags.enableAi === false) throw new Error("AI is disabled in settings.");
+
+        const proposalDefaults = await getSetting("proposals.defaults");
         const supabase = createServerSupabaseClient();
         const { data: proposal, error: pErr } = await supabase.from("proposals").select("*").eq("id", id).maybeSingle();
         if (pErr) throw new Error(pErr.message);
@@ -44,6 +49,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           timelinePreference: d.timelinePreference,
           specialRequirements: d.specialRequirements,
           pricingReference,
+          currency: proposalDefaults.currency ?? (proposal.currency ?? "ZAR"),
         });
 
         for (const key of PROPOSAL_STREAM_KEYS) {

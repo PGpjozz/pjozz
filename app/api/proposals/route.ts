@@ -3,9 +3,11 @@ import { z } from "zod";
 
 import type { Json } from "@/lib/db/database.types";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
+import { getSetting } from "@/lib/settings/store";
 import { mapLeadRow } from "@/lib/leads/mappers";
 import { fetchLatestOutreachByLeadIds } from "@/lib/leads/api-query";
 import { rowToProposalDocument } from "@/lib/proposals/document";
+import type { ProposalContent } from "@/lib/ai/types";
 
 export const dynamic = "force-dynamic";
 
@@ -67,22 +69,42 @@ export async function POST(req: Request) {
       );
     }
     const supabase = createServerSupabaseClient();
+    const proposalDefaults = await getSetting("proposals.defaults");
     const { data: lead, error: lErr } = await supabase.from("leads").select("*").eq("id", parsed.data.leadId).maybeSingle();
     if (lErr) throw new Error(lErr.message);
     if (!lead) return NextResponse.json({ ok: false as const, error: "Lead not found" }, { status: 404 });
+
+    const sections = proposalDefaults.template?.sections ?? [];
+    const sectionText = (key: string): string => {
+      const row = sections.find((s) => s.key === key);
+      if (!row || row.enabled === false) return "";
+      return row.defaultText?.trim() ?? "";
+    };
+
+    const defaultDoc: ProposalContent = {
+      title: proposalDefaults.defaultTitle ?? "Draft proposal",
+      executiveSummary: sectionText("executiveSummary"),
+      problemStatement: sectionText("problemStatement"),
+      proposedSolution: sectionText("proposedSolution"),
+      deliverables: [],
+      timeline: [],
+      investmentOptions: [],
+      whyPjozz: sectionText("whyPjozz"),
+      nextSteps: sectionText("nextSteps"),
+    };
 
     const { data, error } = await supabase
       .from("proposals")
       .insert({
         lead_id: lead.id,
-        title: "Draft proposal",
+        title: proposalDefaults.defaultTitle ?? "Draft proposal",
         scope: null,
         deliverables: [] as unknown as Json,
         timeline: null,
         pricing: {} as unknown as Json,
-        document_json: {} as unknown as Json,
+        document_json: defaultDoc as unknown as Json,
         discovery_json: {} as unknown as Json,
-        currency: "ZAR",
+        currency: proposalDefaults.currency ?? "ZAR",
         status: "draft",
         generated_by_ai: true,
       })

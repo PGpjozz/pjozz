@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { SonnerToaster } from "@/components/sonner-toaster";
+import { FeatureFlagsProvider } from "@/components/flags/feature-flags";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -38,7 +39,7 @@ export default function RootLayout({
           "min-h-screen bg-background font-sans antialiased"
         )}
       >
-        {children}
+        <FeatureFlagsProvider>{children}</FeatureFlagsProvider>
         <SonnerToaster />
       </body>
     </html>

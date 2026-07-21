@@ -4,6 +4,7 @@ import { buildDashboardSnapshot, generateDailyBrief } from "@/lib/ai/daily-brief
 import { loadDailyBriefFromCache, saveDailyBriefToCache } from "@/lib/ai/daily-brief-cache";
 import { insightRowsFromBriefAlerts } from "@/lib/ai/persist-brief-insights";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
+import { getSetting } from "@/lib/settings/store";
 
 import { aiErrorResponse } from "../_utils";
 
@@ -11,6 +12,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
+    const flags = await getSetting("features.flags");
+    if (flags.enableAi === false) {
+      return NextResponse.json({ ok: false as const, error: "AI is disabled in settings." }, { status: 503 });
+    }
+
     const force = new URL(req.url).searchParams.get("refresh") === "1";
     const debug = new URL(req.url).searchParams.get("debug") === "1";
     if (!force) {

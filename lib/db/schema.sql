@@ -185,6 +185,22 @@ CREATE TABLE public.settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE public.discovery_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source TEXT NOT NULL DEFAULT 'web_discovery_auto',
+  query_label TEXT,
+  query TEXT,
+  max_results INTEGER,
+  max_imports INTEGER,
+  attempted_count INTEGER NOT NULL DEFAULT 0,
+  created_count INTEGER NOT NULL DEFAULT 0,
+  skipped_count INTEGER NOT NULL DEFAULT 0,
+  created_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  skipped JSONB NOT NULL DEFAULT '[]'::jsonb,
+  meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- -----------------------------------------------------------------------------
 -- Finance
 -- -----------------------------------------------------------------------------
@@ -260,6 +276,7 @@ CREATE INDEX idx_invoices_status_due ON public.invoices (status, due_at);
 CREATE INDEX idx_invoice_items_invoice_id ON public.invoice_items (invoice_id);
 CREATE INDEX idx_payment_plans_client_id ON public.payment_plans (client_id);
 CREATE INDEX idx_payment_plan_items_plan_id ON public.payment_plan_items (plan_id);
+CREATE INDEX idx_discovery_runs_created_at ON public.discovery_runs (created_at);
 
 -- -----------------------------------------------------------------------------
 -- updated_at trigger
@@ -333,6 +350,7 @@ ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoice_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_plan_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.discovery_runs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "leads_authenticated_all" ON public.leads
   FOR ALL TO authenticated
@@ -404,6 +422,11 @@ CREATE POLICY "payment_plan_items_authenticated_all" ON public.payment_plan_item
   USING (true)
   WITH CHECK (true);
 
+CREATE POLICY "discovery_runs_authenticated_all" ON public.discovery_runs
+  FOR ALL TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
 -- -----------------------------------------------------------------------------
 -- Grants (RLS still applies to authenticated; service_role bypasses RLS)
 -- -----------------------------------------------------------------------------
@@ -424,3 +447,4 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.invoices TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.invoice_items TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_plans TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_plan_items TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.discovery_runs TO authenticated;

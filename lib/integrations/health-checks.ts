@@ -1,7 +1,6 @@
 import { getAnthropicClient } from "@/lib/ai/claude";
+import { n8nBaseUrl } from "@/lib/automation/n8n";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
-
-const DEFAULT_N8N = "http://localhost:5678";
 
 export type CheckResult = {
   ok: boolean;
@@ -12,7 +11,7 @@ export type CheckResult = {
 };
 
 export async function checkN8nHealth(): Promise<CheckResult> {
-  const base = (process.env.N8N_BASE_URL ?? DEFAULT_N8N).replace(/\/$/, "");
+  const base = n8nBaseUrl();
   const t0 = Date.now();
   try {
     const controller = new AbortController();
@@ -94,6 +93,7 @@ export async function checkSupabaseHealth(): Promise<CheckResult> {
 export function integrationEnvChecklist(): Record<string, boolean> {
   const keys = [
     "N8N_BASE_URL",
+    "N8N_WEBHOOK_BASE_URL",
     "N8N_INBOUND_SECRET",
     "N8N_WEBHOOK_CALL_SECRET",
     "OUTREACH_CRON_SECRET",
@@ -110,6 +110,16 @@ export function integrationEnvChecklist(): Record<string, boolean> {
     "TWILIO_WHATSAPP_FROM",
     "TWILIO_WEBHOOK_PUBLIC_URL",
     "TWILIO_VALIDATE_WEBHOOK",
+    "GOOGLE_CSE_API_KEY",
+    "GOOGLE_CSE_CX",
   ] as const;
-  return Object.fromEntries(keys.map((k) => [k, Boolean(process.env[k])])) as Record<string, boolean>;
+  const checklist = Object.fromEntries(keys.map((k) => [k, Boolean(process.env[k])])) as Record<
+    string,
+    boolean
+  >;
+  // Either n8n base env is enough for outbound calls.
+  checklist.N8N_BASE_URL = Boolean(
+    process.env.N8N_BASE_URL?.trim() || process.env.N8N_WEBHOOK_BASE_URL?.trim()
+  );
+  return checklist;
 }

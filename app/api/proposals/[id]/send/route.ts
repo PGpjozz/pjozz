@@ -6,6 +6,7 @@ import { sendTransactionalEmail } from "@/lib/email/resend";
 import { generateShareToken } from "@/lib/proposals/document";
 import { buildProposalClientEmailHtml, publicProposalUrl } from "@/lib/proposals/proposal-email";
 import { rowToProposalDocument } from "@/lib/proposals/document";
+import { getSetting } from "@/lib/settings/store";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,11 @@ const bodySchema = z.object({
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const flags = await getSetting("features.flags");
+    if (flags.enableResendEmail === false) {
+      return NextResponse.json({ ok: false as const, error: "Email sending is disabled in settings." }, { status: 503 });
+    }
+
     const { id } = await params;
     const json: unknown = await req.json().catch(() => ({}));
     const parsed = bodySchema.safeParse(json);

@@ -49,3 +49,60 @@ export const STARTUP_SMB_PRESETS: DiscoveryPreset[] = [
     suggestServices: ["software", "network", "webapp"],
   },
 ];
+
+export const ZA_CITIES = [
+  "Johannesburg",
+  "Pretoria",
+  "Cape Town",
+  "Durban",
+  "Gqeberha",
+  "Bloemfontein",
+  "Polokwane",
+  "Nelspruit",
+  "East London",
+  "Rustenburg",
+] as const;
+
+export const ZA_INDUSTRIES = [
+  "construction",
+  "logistics",
+  "transport",
+  "retail",
+  "hospitality",
+  "manufacturing",
+  "security company",
+  "accounting firm",
+  "law firm",
+  "real estate agency",
+  "medical practice",
+  "warehouse",
+] as const;
+
+/**
+ * Expand a base preset query into multiple targeted variants to increase coverage.
+ * Keep caps so you don't blow API quotas accidentally.
+ */
+export function expandPresetQueries(preset: DiscoveryPreset, opts?: { maxCities?: number; maxIndustries?: number }): Array<{ label: string; query: string; hint?: string }> {
+  const maxCities = Math.max(0, Math.min(ZA_CITIES.length, opts?.maxCities ?? 5));
+  const maxIndustries = Math.max(0, Math.min(ZA_INDUSTRIES.length, opts?.maxIndustries ?? 6));
+
+  const out: Array<{ label: string; query: string; hint?: string }> = [{ label: preset.label, query: preset.query, hint: preset.hint }];
+
+  for (const city of ZA_CITIES.slice(0, maxCities)) {
+    out.push({
+      label: `${preset.label} — ${city}`,
+      query: `${preset.query} ${city} contact email website`,
+      hint: preset.hint,
+    });
+  }
+
+  for (const ind of ZA_INDUSTRIES.slice(0, maxIndustries)) {
+    out.push({
+      label: `${preset.label} — ${ind}`,
+      query: `${preset.query} ${ind} South Africa contact email website`,
+      hint: preset.hint,
+    });
+  }
+
+  return out;
+}

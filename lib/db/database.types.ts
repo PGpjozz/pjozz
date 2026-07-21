@@ -700,6 +700,54 @@ export interface Database {
         };
         Relationships: [];
       };
+      discovery_runs: {
+        Row: {
+          id: string;
+          source: string;
+          query_label: string | null;
+          query: string | null;
+          max_results: number | null;
+          max_imports: number | null;
+          attempted_count: number;
+          created_count: number;
+          skipped_count: number;
+          created_ids: Json;
+          skipped: Json;
+          meta: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          source?: string;
+          query_label?: string | null;
+          query?: string | null;
+          max_results?: number | null;
+          max_imports?: number | null;
+          attempted_count?: number;
+          created_count?: number;
+          skipped_count?: number;
+          created_ids?: Json;
+          skipped?: Json;
+          meta?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          source?: string;
+          query_label?: string | null;
+          query?: string | null;
+          max_results?: number | null;
+          max_imports?: number | null;
+          attempted_count?: number;
+          created_count?: number;
+          skipped_count?: number;
+          created_ids?: Json;
+          skipped?: Json;
+          meta?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -31,6 +32,8 @@ const NAV = [
  */
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { flags } = useFeatureFlags();
+  const aiOn = flags.enableAi;
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -73,10 +76,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="mt-auto border-t border-border p-4">
           <div className="flex items-center gap-2 rounded-md border border-border/80 bg-background/60 px-3 py-2">
             <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/60 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              {aiOn ? (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/60 opacity-75" />
+              ) : null}
+              <span
+                className={cn(
+                  "relative inline-flex h-2.5 w-2.5 rounded-full",
+                  aiOn ? "bg-emerald-500" : "bg-muted-foreground/50"
+                )}
+              />
             </span>
-            <span className="text-xs font-medium text-muted-foreground">AI active</span>
+            <span className="text-xs font-medium text-muted-foreground">{aiOn ? "AI active" : "AI off"}</span>
           </div>
         </div>
       </aside>

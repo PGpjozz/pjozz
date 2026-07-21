@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { newStep } from "@/lib/campaigns/defaults";
 import { buildSyntheticLeadForAi } from "@/lib/campaigns/synthetic-lead";
 import type { LeadServiceType, OutreachSequenceStep } from "@/types";
+import { useFeatureFlags } from "@/components/flags/feature-flags";
 
 const EMAIL_TYPES = ["initial", "followup1", "followup2", "breakup"] as const;
 
@@ -43,11 +44,13 @@ function SortableStep({
   index,
   onEdit,
   onRegenerate,
+  regenerateDisabled,
 }: {
   step: OutreachSequenceStep;
   index: number;
   onEdit: () => void;
   onRegenerate: () => void;
+  regenerateDisabled?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
@@ -89,7 +92,15 @@ function SortableStep({
             <p className="whitespace-pre-wrap">{step.body || "—"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" className="gap-1" onClick={onRegenerate}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1"
+              onClick={onRegenerate}
+              disabled={!!regenerateDisabled}
+              title={regenerateDisabled ? "AI is disabled in Settings" : "Regenerate this step with AI"}
+            >
               <Sparkles className="size-3.5" />
               Regenerate with AI
             </Button>
@@ -105,6 +116,7 @@ function SortableStep({
 }
 
 export function SequenceBuilder({ steps, onChange, serviceFocus, companyHint }: Props) {
+  const { flags } = useFeatureFlags();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -118,6 +130,10 @@ export function SequenceBuilder({ steps, onChange, serviceFocus, companyHint }: 
   }
 
   async function regenerate(step: OutreachSequenceStep, index: number) {
+    if (!flags.enableAi) {
+      toast.error("AI is disabled in Settings.");
+      return;
+    }
     const lead = buildSyntheticLeadForAi(serviceFocus, companyHint);
     const emailType = stepToEmailType(index);
     try {
@@ -161,6 +177,7 @@ export function SequenceBuilder({ steps, onChange, serviceFocus, companyHint }: 
                 index={index}
                 onEdit={() => setEditingId(step.id)}
                 onRegenerate={() => void regenerate(step, index)}
+                regenerateDisabled={!flags.enableAi}
               />
             ))}
           </div>

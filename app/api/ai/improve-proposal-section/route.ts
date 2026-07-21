@@ -4,6 +4,7 @@ import { z } from "zod";
 import { compactJsonForAi, runClaudeJsonTask } from "@/lib/ai/claude";
 import { parseJsonObject } from "@/lib/ai/parse-json";
 import { proposalContentOutputSchema } from "@/lib/ai/schemas";
+import { getSetting } from "@/lib/settings/store";
 
 import { aiErrorResponse } from "../_utils";
 
@@ -27,6 +28,11 @@ const outSchema = z.object({ text: z.string().min(1) });
 
 export async function POST(req: Request) {
   try {
+    const flags = await getSetting("features.flags");
+    if (flags.enableAi === false) {
+      return NextResponse.json({ ok: false as const, error: "AI is disabled in settings." }, { status: 503 });
+    }
+
     const json: unknown = await req.json();
     const parsed = bodySchema.safeParse(json);
     if (!parsed.success) {
