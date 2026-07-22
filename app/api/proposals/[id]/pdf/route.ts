@@ -3,19 +3,35 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { NextResponse } from "next/server";
 
 import { createServerSupabaseClient } from "@/lib/db/supabase";
+import { assertProposalPdfAccess } from "@/lib/proposals/pdf-access";
 import { rowToProposalDocument } from "@/lib/proposals/document";
 import { ProposalPdfDocument } from "@/lib/proposals/proposal-pdf-document";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const token = new URL(req.url).searchParams.get("token");
     const supabase = createServerSupabaseClient();
     const { data: row, error } = await supabase.from("proposals").select("*").eq("id", id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) return NextResponse.json({ ok: false as const, error: "Not found" }, { status: 404 });
+
+    const access = await assertProposalPdfAccess({
+      shareToken: row.share_token,
+      requestToken: token,
+    });
+    if (!access.ok) {
+      return NextResponse.json({ ok: false as const, error: access.error }, { status: access.status });
+    }
+
+    // Token holders must not download drafts.
+    if (row.status === "draft" && token) {
+      return NextResponse.json({ ok: false as const, error: "Not found" }, { status: 404 });
+    }
+
     const doc = rowToProposalDocument(row);
     if (!doc) return NextResponse.json({ ok: false as const, error: "No document" }, { status: 400 });
 
@@ -29,6 +45,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${safeName}.pdf"`,
+        "Cache-Control": "private, no-store",
       },
     });
   } catch (e) {

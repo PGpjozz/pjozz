@@ -1,12 +1,24 @@
-import { Mail, MapPin, MessageCircle } from "lucide-react";
+import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 
 import { ContactForm } from "@/components/site/contact-form";
 import { QuoteForm } from "@/components/site/quote-form";
 import { COMPANY } from "@/lib/marketing/content";
-import { emailMailto, phoneTel, whatsappHref } from "@/lib/marketing/links";
+import { whatsappHref } from "@/lib/marketing/links";
+import { buildMetadata } from "@/lib/seo";
+import { siteEmail, sitePhoneDisplay, sitePhoneHref } from "@/lib/site-config";
+
+export const metadata = buildMetadata({
+  title: "Contact — let's build",
+  description:
+    "Reach the Pjozz Technologies team via WhatsApp, email, or our discovery form. Enquiries route straight into the same CRM our delivery team uses.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   const wa = whatsappHref();
+  const email = siteEmail();
+  const phone = sitePhoneDisplay();
+  const phoneHref = sitePhoneHref();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
@@ -24,39 +36,43 @@ export default function ContactPage() {
             <h2 className="font-heading text-sm font-semibold uppercase tracking-wider text-slate-500">Direct</h2>
             <ul className="mt-4 space-y-4 text-sm">
               <li>
-                <a href={wa} target="_blank" rel="noreferrer" className="flex items-center gap-3 text-cyan-300 hover:text-cyan-200">
+                <a
+                  href={wa}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-3 text-cyan-300 hover:text-cyan-200"
+                >
                   <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
                   WhatsApp (fastest)
                 </a>
               </li>
               <li>
-                <a href={emailMailto} className="flex items-center gap-3 text-slate-300 hover:text-white">
+                <a href={`mailto:${email}`} className="flex items-center gap-3 text-slate-300 hover:text-white">
                   <Mail className="h-5 w-5 shrink-0 text-violet-400" aria-hidden />
-                  {COMPANY.emailDisplay}
+                  {email}
                 </a>
               </li>
               <li>
-                <a href={phoneTel} className="flex items-center gap-3 text-slate-300 hover:text-white">
-                  <span className="flex h-5 w-5 items-center justify-center font-mono text-xs text-violet-400">📞</span>
-                  {COMPANY.phoneDisplay}
+                <a href={phoneHref} className="flex items-center gap-3 text-slate-300 hover:text-white">
+                  <Phone className="h-5 w-5 shrink-0 text-violet-400" aria-hidden />
+                  {phone}
                 </a>
               </li>
               <li className="flex gap-3 text-slate-400">
                 <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-cyan-500/80" aria-hidden />
-                <span>
-                  {COMPANY.locations.join(" · ")}
-                </span>
+                <span>{COMPANY.locations.join(" · ")}</span>
               </li>
             </ul>
             <p className="mt-4 text-xs text-slate-500">
-              Set <code className="rounded bg-white/10 px-1">NEXT_PUBLIC_WHATSAPP_E164</code> in{" "}
-              <code className="rounded bg-white/10 px-1">.env.local</code> for your real WhatsApp routing (e.g. 27791234567).
+              Business hours: Mon–Fri, 08:00–17:00 SAST. We aim to reply within one business day.
             </p>
           </div>
 
           <div className="rounded-2xl border border-violet-500/20 bg-violet-950/20 p-6">
             <h2 className="font-heading text-lg font-semibold text-white">Formal quote</h2>
-            <p className="mt-2 text-sm text-slate-400">Procurement-friendly capture — we attach budget & timeline context to your CRM lead.</p>
+            <p className="mt-2 text-sm text-slate-400">
+              Procurement-friendly capture — we attach budget &amp; timeline context to your CRM lead.
+            </p>
             <div className="mt-6">
               <QuoteForm />
             </div>
@@ -67,8 +83,7 @@ export default function ContactPage() {
           <div className="rounded-2xl border border-cyan-500/20 bg-[#0c1222] p-6 md:p-8">
             <h2 className="font-heading text-xl font-semibold text-white">Discovery form</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Prefer email-style detail? Use this — it posts to <code className="rounded bg-white/10 px-1 font-mono text-xs text-cyan-300">/api/contact</code> (same CRM as the
-              operator workspace).
+              Prefer more detail? Tell us what you&apos;re building — services, constraints, and outcomes.
             </p>
             <div className="mt-8">
               <ContactForm />

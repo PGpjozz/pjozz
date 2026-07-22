@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import type { TablesInsert } from "@/lib/db/database.types";
 import { createLead } from "@/lib/db/supabase";
+import { notifyInboundLead } from "@/lib/forms/inbound-notify";
+import { clientIpKey, isHoneypotTripped, isRateLimited } from "@/lib/forms/spam-guard";
 import { mergeEnrichment } from "@/lib/leads/mappers";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +18,28 @@ const bodySchema = z.object({
   phone: z.string().max(40).optional(),
   message: z.string().min(20).max(8000),
   serviceTypes: z.array(serviceTypes).min(1).max(6),
+  consent: z.boolean().refine((v) => v === true, { message: "Privacy consent is required." }),
+  /** Honeypot — must stay empty */
+  website: z.string().max(200).optional(),
 });
 
 /** Public marketing contact — creates a CRM lead (same storage as operator inbound). */
 export async function POST(req: Request) {
   try {
+    const ip = clientIpKey(req);
+    if (isRateLimited("contact", ip)) {
+      return NextResponse.json(
+        { ok: false as const, error: "Too many requests. Please try again in a few minutes." },
+        { status: 429 }
+      );
+    }
+
     const json: unknown = await req.json();
+    if (json && typeof json === "object" && isHoneypotTripped(json as Record<string, unknown>)) {
+      // Pretend success so bots don't retry.
+      return NextResponse.json({ ok: true as const });
+    }
+
     const parsed = bodySchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json(
@@ -57,6 +75,16 @@ export async function POST(req: Request) {
     };
 
     await createLead(insert);
+
+    await notifyInboundLead({
+      kind: "contact",
+      companyName: b.companyName,
+      email: b.email,
+      contactName: b.contactName,
+      phone: b.phone,
+      summary: b.message,
+      extraLines: [`Services: ${b.serviceTypes.join(", ")}`],
+    });
 
     return NextResponse.json({ ok: true as const });
   } catch (e) {

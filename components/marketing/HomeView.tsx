@@ -189,7 +189,7 @@ export function HomeView() {
                 </div>
                 <p className="mt-4 text-xs text-slate-500">Representative layout — full operator UI available after onboarding.</p>
                 <Link
-                  href="/dashboard"
+                  href="/login"
                   className={cn(
                     buttonVariants({ variant: "outline" }),
                     "mt-6 w-full border border-white/15 bg-transparent text-white hover:bg-white/5"

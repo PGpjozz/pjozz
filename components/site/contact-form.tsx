@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -27,6 +28,8 @@ export function ContactForm() {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [selected, setSelected] = useState<LeadServiceType[]>(["webapp"]);
+  const [consent, setConsent] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
   const [busy, setBusy] = useState(false);
 
   const toggle = (id: LeadServiceType) => {
@@ -37,6 +40,10 @@ export function ContactForm() {
     e.preventDefault();
     if (selected.length === 0) {
       toast.error("Pick at least one service.");
+      return;
+    }
+    if (!consent) {
+      toast.error("Please agree to the privacy policy to continue.");
       return;
     }
     setBusy(true);
@@ -51,6 +58,8 @@ export function ContactForm() {
           phone: phone.trim() || undefined,
           message: message.trim(),
           serviceTypes: selected,
+          consent: true,
+          website: honeypot,
         }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
@@ -65,6 +74,8 @@ export function ContactForm() {
       setPhone("");
       setMessage("");
       setSelected(["webapp"]);
+      setConsent(false);
+      setHoneypot("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -73,10 +84,26 @@ export function ContactForm() {
   };
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="space-y-5">
-      <div>
-        <label className="text-xs uppercase tracking-wider text-slate-500">Company / organisation</label>
+    <form onSubmit={(e) => void submit(e)} className="space-y-5" noValidate>
+      {/* Honeypot — hidden from assistive tech */}
+      <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+        <label htmlFor="contact-website">Company website</label>
         <input
+          id="contact-website"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="contact-company" className="text-xs uppercase tracking-wider text-slate-500">
+          Company / organisation
+        </label>
+        <input
+          id="contact-company"
           className={cn(inputClass, "mt-1")}
           value={companyName}
           onChange={(e) => setCompanyName(e.target.value)}
@@ -86,8 +113,11 @@ export function ContactForm() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-xs uppercase tracking-wider text-slate-500">Your name</label>
+          <label htmlFor="contact-name" className="text-xs uppercase tracking-wider text-slate-500">
+            Your name
+          </label>
           <input
+            id="contact-name"
             className={cn(inputClass, "mt-1")}
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
@@ -96,8 +126,11 @@ export function ContactForm() {
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-wider text-slate-500">Email *</label>
+          <label htmlFor="contact-email" className="text-xs uppercase tracking-wider text-slate-500">
+            Email *
+          </label>
           <input
+            id="contact-email"
             className={cn(inputClass, "mt-1")}
             type="email"
             required
@@ -109,8 +142,11 @@ export function ContactForm() {
         </div>
       </div>
       <div>
-        <label className="text-xs uppercase tracking-wider text-slate-500">Phone</label>
+        <label htmlFor="contact-phone" className="text-xs uppercase tracking-wider text-slate-500">
+          Phone
+        </label>
         <input
+          id="contact-phone"
           className={cn(inputClass, "mt-1")}
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
@@ -118,14 +154,15 @@ export function ContactForm() {
           autoComplete="tel"
         />
       </div>
-      <div>
-        <p className="text-xs uppercase tracking-wider text-slate-500">Services *</p>
+      <fieldset>
+        <legend className="text-xs uppercase tracking-wider text-slate-500">Services *</legend>
         <div className="mt-2 flex flex-wrap gap-2">
           {SERVICE_OPTIONS.map(({ id, label }) => (
             <button
               key={id}
               type="button"
               onClick={() => toggle(id)}
+              aria-pressed={selected.includes(id)}
               className={cn(
                 "rounded-full border px-3 py-1.5 text-xs transition-colors",
                 selected.includes(id)
@@ -137,10 +174,13 @@ export function ContactForm() {
             </button>
           ))}
         </div>
-      </div>
+      </fieldset>
       <div>
-        <label className="text-xs uppercase tracking-wider text-slate-500">Project brief *</label>
+        <label htmlFor="contact-message" className="text-xs uppercase tracking-wider text-slate-500">
+          Project brief *
+        </label>
         <textarea
+          id="contact-message"
           className={cn(inputClass, "mt-1 min-h-[140px] resize-y")}
           required
           minLength={20}
@@ -149,6 +189,22 @@ export function ContactForm() {
           placeholder="What problem are we solving, timelines, and constraints?"
         />
       </div>
+      <label className="flex items-start gap-3 text-sm text-slate-400">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-400"
+          checked={consent}
+          onChange={(e) => setConsent(e.target.checked)}
+          required
+        />
+        <span>
+          I agree that Pjozz may process this enquiry under the{" "}
+          <Link href="/privacy" className="text-cyan-300 underline-offset-2 hover:underline">
+            privacy policy
+          </Link>
+          .
+        </span>
+      </label>
       <Button
         type="submit"
         disabled={busy}
@@ -157,8 +213,7 @@ export function ContactForm() {
         {busy ? "Sending…" : "Send enquiry"}
       </Button>
       <p className="text-xs text-slate-500">
-        Submissions create a lead in our CRM with source &quot;website&quot;. No spam — same pipeline our sales team
-        uses.
+        We reply from the same CRM our delivery team uses — usually within one business day. No spam lists.
       </p>
     </form>
   );

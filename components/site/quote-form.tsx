@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -16,10 +17,16 @@ export function QuoteForm() {
   const [budgetRange, setBudgetRange] = useState("");
   const [timeline, setTimeline] = useState("");
   const [notes, setNotes] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consent) {
+      toast.error("Please agree to the privacy policy to continue.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/quote", {
@@ -31,6 +38,8 @@ export function QuoteForm() {
           budgetRange: budgetRange.trim() || undefined,
           timeline: timeline.trim() || undefined,
           notes: notes.trim(),
+          consent: true,
+          website: honeypot,
         }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
@@ -38,12 +47,14 @@ export function QuoteForm() {
         toast.error(data.error ?? "Request failed");
         return;
       }
-      toast.success("Quote request received — we’ll follow up from CRM.");
+      toast.success("Quote request received — we’ll follow up shortly.");
       setCompanyName("");
       setEmail("");
       setBudgetRange("");
       setTimeline("");
       setNotes("");
+      setConsent(false);
+      setHoneypot("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -52,32 +63,54 @@ export function QuoteForm() {
   };
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="space-y-4">
+    <form onSubmit={(e) => void submit(e)} className="space-y-4" noValidate>
+      <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+        <label htmlFor="quote-website">Company website</label>
+        <input
+          id="quote-website"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+        />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-xs uppercase tracking-wider text-slate-500">Company *</label>
+          <label htmlFor="quote-company" className="text-xs uppercase tracking-wider text-slate-500">
+            Company *
+          </label>
           <input
+            id="quote-company"
             className={cn(inputClass, "mt-1")}
             required
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
+            autoComplete="organization"
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-wider text-slate-500">Work email *</label>
+          <label htmlFor="quote-email" className="text-xs uppercase tracking-wider text-slate-500">
+            Work email *
+          </label>
           <input
+            id="quote-email"
             className={cn(inputClass, "mt-1")}
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
           />
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-xs uppercase tracking-wider text-slate-500">Budget range</label>
+          <label htmlFor="quote-budget" className="text-xs uppercase tracking-wider text-slate-500">
+            Budget range
+          </label>
           <input
+            id="quote-budget"
             className={cn(inputClass, "mt-1")}
             value={budgetRange}
             onChange={(e) => setBudgetRange(e.target.value)}
@@ -85,8 +118,11 @@ export function QuoteForm() {
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-wider text-slate-500">Timeline</label>
+          <label htmlFor="quote-timeline" className="text-xs uppercase tracking-wider text-slate-500">
+            Timeline
+          </label>
           <input
+            id="quote-timeline"
             className={cn(inputClass, "mt-1")}
             value={timeline}
             onChange={(e) => setTimeline(e.target.value)}
@@ -95,8 +131,11 @@ export function QuoteForm() {
         </div>
       </div>
       <div>
-        <label className="text-xs uppercase tracking-wider text-slate-500">What do you need? *</label>
+        <label htmlFor="quote-notes" className="text-xs uppercase tracking-wider text-slate-500">
+          What do you need? *
+        </label>
         <textarea
+          id="quote-notes"
           className={cn(inputClass, "mt-1 min-h-[100px]")}
           required
           minLength={15}
@@ -104,7 +143,28 @@ export function QuoteForm() {
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
-      <Button type="submit" disabled={busy} variant="outline" className="w-full border-violet-500/40 text-violet-100 hover:bg-violet-500/10">
+      <label className="flex items-start gap-3 text-sm text-slate-400">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-violet-500 focus:ring-violet-400"
+          checked={consent}
+          onChange={(e) => setConsent(e.target.checked)}
+          required
+        />
+        <span>
+          I agree to the{" "}
+          <Link href="/privacy" className="text-violet-300 underline-offset-2 hover:underline">
+            privacy policy
+          </Link>
+          .
+        </span>
+      </label>
+      <Button
+        type="submit"
+        disabled={busy}
+        variant="outline"
+        className="w-full border-violet-500/40 text-violet-100 hover:bg-violet-500/10"
+      >
         {busy ? "Sending…" : "Submit quote request"}
       </Button>
     </form>

@@ -1,9 +1,22 @@
+import { siteEmail, sitePhoneHref, whatsappE164 } from "@/lib/site-config";
+
 /** wa.me expects country code + number, no + or spaces, e.g. 27791234567 */
 export function whatsappHref(): string {
-  const n = process.env.NEXT_PUBLIC_WHATSAPP_E164?.replace(/\D/g, "");
+  const n = whatsappE164();
   if (!n) return "https://wa.me/27000000000";
-  return `https://wa.me/${n}`;
+  const text = encodeURIComponent("Hi Pjozz — I'd like to talk about a project.");
+  return `https://wa.me/${n}?text=${text}`;
 }
 
-export const phoneTel = process.env.NEXT_PUBLIC_PHONE_TEL ?? "tel:+27000000000";
-export const emailMailto = `mailto:${process.env.NEXT_PUBLIC_HELLO_EMAIL ?? "hello@pjozz.co.za"}`;
+export function phoneTel(): string {
+  return sitePhoneHref();
+}
+
+export function emailMailto(): string {
+  return `mailto:${siteEmail()}`;
+}
+
+/** @deprecated Prefer phoneTel() — kept for older imports that treated this as a constant. */
+export const phoneTelHref = sitePhoneHref();
+/** @deprecated Prefer emailMailto() */
+export const emailMailtoHref = `mailto:${siteEmail()}`;

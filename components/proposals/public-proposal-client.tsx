@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import type { ProposalContent } from "@/lib/ai/types";
 import type { Tables } from "@/lib/db/supabase";
+import { cn } from "@/lib/utils";
 
 type ProposalDefaults = {
   currency: string;
@@ -16,12 +18,16 @@ type ProposalDefaults = {
 
 export function PublicProposalClient({
   proposal,
-  document,
+  document: proposalDoc,
   token,
+  interactionLocked = false,
+  lockReason = null,
 }: {
   proposal: Tables<"proposals">;
   document: ProposalContent;
   token: string;
+  interactionLocked?: boolean;
+  lockReason?: string | null;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [comment, setComment] = useState("");
@@ -29,6 +35,7 @@ export function PublicProposalClient({
   const [defaults, setDefaults] = useState<ProposalDefaults | null>(null);
   const [accepted, setAccepted] = useState(proposal.status === "accepted");
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [changesSent, setChangesSent] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -58,9 +65,12 @@ export function PublicProposalClient({
   }, [defaults]);
 
   const currency = defaults?.currency ?? (proposal.currency ?? "ZAR");
+  const canAct = !accepted && !interactionLocked;
+  const pdfHref = `/api/proposals/${proposal.id}/pdf?token=${encodeURIComponent(token)}`;
+  const quotePdfHref = `/api/proposals/${proposal.id}/quote-pdf?token=${encodeURIComponent(token)}`;
 
   async function accept() {
-    if (accepted) return;
+    if (!canAct) return;
     setBusy("accept");
     try {
       const res = await fetch(`/api/proposals/${proposal.id}/accept`, {
@@ -91,6 +101,7 @@ export function PublicProposalClient({
   }
 
   async function requestChanges() {
+    if (!canAct) return;
     if (!comment.trim()) {
       toast.error("Please describe the changes you need.");
       return;
@@ -107,6 +118,7 @@ export function PublicProposalClient({
       toast.success("Your feedback was sent to Pjozz.");
       setShowChanges(false);
       setComment("");
+      setChangesSent(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error");
     } finally {
@@ -116,34 +128,110 @@ export function PublicProposalClient({
 
   return (
     <div className="min-h-screen bg-[#fafafa] text-[#1a1a1a]">
-      <header className="border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-5">
+      <header className="sticky top-0 z-40 border-b border-black/10 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link href="/" className="transition-opacity hover:opacity-80">
             <BrandLogo href={null} size="md" showWordmark tone="light" />
           </Link>
-          <Link href="/client" className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline">
-            Client hub
-          </Link>
+          <div className="flex items-center gap-3">
+            <a
+              href={pdfHref}
+              className="hidden items-center gap-1.5 text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline sm:inline-flex"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden />
+              PDF
+            </a>
+            <Link
+              href="/client"
+              className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline"
+            >
+              Client hub
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-10">
-        <h1 className="font-serif text-3xl font-semibold text-zinc-900">{document.title}</h1>
+      <main className="mx-auto max-w-3xl px-4 pb-28 pt-8 sm:px-6 sm:pb-16 sm:pt-10">
+        {interactionLocked && lockReason ? (
+          <div
+            role="status"
+            className="mb-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          >
+            <p className="font-semibold">This proposal is read-only</p>
+            <p className="mt-1 text-amber-900/80">{lockReason}</p>
+            <Link href="/contact" className="mt-2 inline-block font-medium underline underline-offset-2">
+              Contact Pjozz
+            </Link>
+          </div>
+        ) : null}
+
+        {accepted ? (
+          <div
+            role="status"
+            className="mb-8 flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-950"
+          >
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
+            <div>
+              <p className="font-semibold">Proposal accepted — thank you</p>
+              <p className="mt-1 text-emerald-900/80">
+                We&apos;ve notified the Pjozz team. Expect invoice and kickoff next steps shortly
+                {invoiceId ? " (invoice draft is ready on our side)." : "."}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        {changesSent && !accepted ? (
+          <div
+            role="status"
+            className="mb-8 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"
+          >
+            Feedback received — we&apos;ll revise and send an updated link when ready.
+          </div>
+        ) : null}
+
+        <h1 className="font-serif text-3xl font-semibold text-zinc-900 sm:text-4xl">{proposalDoc.title}</h1>
         <p className="mt-2 text-sm text-zinc-500">Prepared for your review · {currency} pricing</p>
+
+        <div className="mt-6 flex flex-wrap gap-2">
+          <a
+            href={pdfHref}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Download PDF
+          </a>
+          <a
+            href={quotePdfHref}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+          >
+            <FileText className="h-4 w-4" aria-hidden />
+            Quote sheet
+          </a>
+        </div>
 
         <article className="mt-10 space-y-10 text-[15px] leading-relaxed">
           {sectionMeta.map((s) => {
-            if (s.key === "executiveSummary") return <Section key={s.key} title={s.title} body={document.executiveSummary} />;
-            if (s.key === "problemStatement") return <Section key={s.key} title={s.title} body={document.problemStatement} />;
-            if (s.key === "proposedSolution") return <Section key={s.key} title={s.title} body={document.proposedSolution} />;
-            if (s.key === "whyPjozz") return <Section key={s.key} title={s.title} body={document.whyPjozz} />;
-            if (s.key === "nextSteps") return <Section key={s.key} title={s.title} body={document.nextSteps} />;
+            if (s.key === "executiveSummary")
+              return <Section key={s.key} title={s.title} body={proposalDoc.executiveSummary} />;
+            if (s.key === "problemStatement")
+              return <Section key={s.key} title={s.title} body={proposalDoc.problemStatement} />;
+            if (s.key === "proposedSolution")
+              return <Section key={s.key} title={s.title} body={proposalDoc.proposedSolution} />;
+            if (s.key === "whyPjozz") return <Section key={s.key} title={s.title} body={proposalDoc.whyPjozz} />;
+            if (s.key === "nextSteps") return <Section key={s.key} title={s.title} body={proposalDoc.nextSteps} />;
             if (s.key === "deliverables") {
               return (
                 <section key={s.key}>
                   <h2 className="border-b border-zinc-200 pb-2 font-semibold text-zinc-900">{s.title}</h2>
                   <ul className="mt-4 list-disc space-y-2 pl-5">
-                    {document.deliverables.map((d, i) => (
+                    {proposalDoc.deliverables.map((d, i) => (
                       <li key={i}>
                         <strong>{d.item}</strong> — {d.description}
                       </li>
@@ -157,7 +245,7 @@ export function PublicProposalClient({
                 <section key={s.key}>
                   <h2 className="border-b border-zinc-200 pb-2 font-semibold text-zinc-900">{s.title}</h2>
                   <div className="mt-4 space-y-3">
-                    {document.timeline.map((t, i) => (
+                    {proposalDoc.timeline.map((t, i) => (
                       <div key={i} className="rounded-lg border border-zinc-200 bg-white p-3">
                         <p className="font-medium text-zinc-900">
                           {t.phase} <span className="text-zinc-500">({t.duration})</span>
@@ -174,7 +262,7 @@ export function PublicProposalClient({
                 <section key={s.key}>
                   <h2 className="border-b border-zinc-200 pb-2 font-semibold text-zinc-900">{s.title}</h2>
                   <div className="mt-4 space-y-4">
-                    {document.investmentOptions.map((o, i) => (
+                    {proposalDoc.investmentOptions.map((o, i) => (
                       <div key={i} className="rounded-lg border border-zinc-200 bg-white p-4">
                         <p className="text-lg font-semibold text-[#00a67e]">
                           {currency} {o.price.toLocaleString("en-ZA")}
@@ -191,32 +279,31 @@ export function PublicProposalClient({
           })}
         </article>
 
-        <div className="mt-12 flex flex-col gap-3 border-t border-zinc-200 pt-8 sm:flex-row sm:items-center">
-          {accepted ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              <p className="font-semibold">Proposal accepted. Thank you.</p>
-              <p className="mt-1 text-emerald-800/80">
-                Pjozz will follow up with invoice and kickoff next steps
-                {invoiceId ? ` (invoice draft ready).` : "."}
-              </p>
-            </div>
-          ) : (
+        <div className="mt-12 hidden flex-col gap-3 border-t border-zinc-200 pt-8 sm:flex sm:flex-row sm:items-center">
+          {canAct ? (
             <>
-              <Button className="bg-[#00a67e] text-black hover:bg-[#00c896]" disabled={busy !== null} onClick={() => void accept()}>
+              <Button
+                className="bg-[#00a67e] text-black hover:bg-[#00c896]"
+                disabled={busy !== null}
+                onClick={() => void accept()}
+              >
                 {busy === "accept" ? "Submitting…" : "Accept proposal"}
               </Button>
               <Button variant="outline" onClick={() => setShowChanges((s) => !s)}>
                 Request changes
               </Button>
             </>
-          )}
+          ) : null}
         </div>
 
-        {showChanges ? (
+        {showChanges && canAct ? (
           <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-4">
-            <label className="mb-2 block text-xs font-medium uppercase text-zinc-500">What should we adjust?</label>
+            <label htmlFor="proposal-changes" className="mb-2 block text-xs font-medium uppercase text-zinc-500">
+              What should we adjust?
+            </label>
             <textarea
-              className="w-full rounded-lg border border-zinc-300 p-3 text-sm"
+              id="proposal-changes"
+              className="w-full rounded-lg border border-zinc-300 p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a67e]/40"
               rows={4}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -227,6 +314,37 @@ export function PublicProposalClient({
           </div>
         ) : null}
       </main>
+
+      {/* Mobile sticky action bar */}
+      {canAct ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 p-3 backdrop-blur sm:hidden">
+          <div className="mx-auto flex max-w-3xl gap-2">
+            <Button
+              className="flex-1 bg-[#00a67e] text-black hover:bg-[#00c896]"
+              disabled={busy !== null}
+              onClick={() => void accept()}
+            >
+              {busy === "accept" ? "…" : "Accept"}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setShowChanges(true);
+                window.document.getElementById("proposal-changes")?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+            >
+              Changes
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {accepted ? (
+        <div className={cn("fixed inset-x-0 bottom-0 z-40 border-t border-emerald-200 bg-emerald-50 p-3 sm:hidden")}>
+          <p className="text-center text-sm font-medium text-emerald-900">Accepted — we&apos;ll be in touch</p>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -4,7 +4,15 @@ import { ArrowRight } from "lucide-react";
 import { Reveal } from "@/components/marketing/Reveal";
 import { caseStudies } from "@/lib/marketing/content";
 import { buttonVariants } from "@/components/ui/button";
+import { buildMetadata } from "@/lib/seo";
 import { cn } from "@/lib/utils";
+
+export const metadata = buildMetadata({
+  title: "Projects — selected case studies",
+  description:
+    "Representative engagements across student progression, AI knowledge systems, and automation backbones — anonymised where required, with references available during procurement.",
+  path: "/projects",
+});
 
 export default function ProjectsPage() {
   return (

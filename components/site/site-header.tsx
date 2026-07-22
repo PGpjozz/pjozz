@@ -16,7 +16,6 @@ const LINKS = [
   { href: "/projects", label: "Projects" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
-  { href: "/demo", label: "AI demo" },
   { href: "/portal", label: "Portal" },
   { href: "/client", label: "Client hub" },
 ] as const;
@@ -54,7 +53,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <Link
-            href="/dashboard"
+            href="/login"
             className={cn(
               buttonVariants({ variant: "outline", size: "sm" }),
               "hidden border-violet-500/40 text-violet-200 hover:bg-violet-500/10 sm:inline-flex"
@@ -89,7 +88,7 @@ export function SiteHeader() {
               </Link>
             ))}
             <Link
-              href="/dashboard"
+              href="/login"
               className="mt-2 rounded-lg border border-violet-500/40 px-3 py-3 text-center text-sm text-violet-200"
               onClick={() => setOpen(false)}
             >

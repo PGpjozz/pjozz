@@ -37,6 +37,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false as const, error: "Invalid token" }, { status: 403 });
     }
 
+    if (row.status === "expired" || row.status === "rejected" || row.status === "draft") {
+      return NextResponse.json(
+        { ok: false as const, error: "This proposal can no longer be accepted." },
+        { status: 409 }
+      );
+    }
+
     if (row.status === "accepted") {
       try {
         const r = await ensureClientAndInvoiceFromProposal(id);

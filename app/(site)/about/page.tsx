@@ -4,7 +4,15 @@ import { ArrowRight } from "lucide-react";
 import { Reveal } from "@/components/marketing/Reveal";
 import { COMPANY, skillsBadges } from "@/lib/marketing/content";
 import { buttonVariants } from "@/components/ui/button";
+import { buildMetadata } from "@/lib/seo";
 import { cn } from "@/lib/utils";
+
+export const metadata = buildMetadata({
+  title: "About Pjozz — built for operators",
+  description:
+    "Pjozz Technologies delivers AI, automation, custom software, and infrastructure that shows up in revenue and uptime — built for operators across Johannesburg, Soweto, and South Africa.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

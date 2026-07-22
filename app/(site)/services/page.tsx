@@ -4,7 +4,16 @@ import { ArrowRight } from "lucide-react";
 import { Reveal } from "@/components/marketing/Reveal";
 import { marketingServices } from "@/lib/marketing/content";
 import { buttonVariants } from "@/components/ui/button";
+import { buildMetadata } from "@/lib/seo";
 import { cn } from "@/lib/utils";
+
+export const metadata = buildMetadata({
+  title: "Services — AI, automation, software, infrastructure",
+  description:
+    "Deep engagements across AI systems, business automation, product engineering, and network/CCTV infrastructure. Scoped as milestones so you can fund delivery in phases.",
+  path: "/services",
+  keywords: ["AI services", "automation services", "software development", "CCTV installation Gauteng"],
+});
 
 export default function ServicesPage() {
   return (

@@ -14,9 +14,15 @@ import { ADMIN_COOKIE_NAME, verifyAdminSession } from "@/lib/auth/admin-session"
 const PUBLIC_EXACT = new Set<string>([
   "/",
   "/login",
+  "/privacy",
+  "/terms",
+  "/robots.txt",
+  "/sitemap.xml",
   "/api/auth/login",
   "/api/auth/logout",
   "/api/contact",
+  "/api/quote",
+  "/api/og",
   "/api/campaigns/pending-sends",
   "/api/settings/proposals.defaults",
 ]);
@@ -32,6 +38,7 @@ const PUBLIC_PREFIXES: readonly string[] = [
   "/contact",
   "/client",
   "/p/",
+  "/api/og",
   "/api/track/",
   "/api/webhooks/",
   "/api/automation/",
@@ -41,6 +48,8 @@ const PUBLIC_PREFIXES: readonly string[] = [
 const PUBLIC_PATTERNS: readonly RegExp[] = [
   /^\/api\/proposals\/[^/]+\/accept$/,
   /^\/api\/proposals\/[^/]+\/request-changes$/,
+  /^\/api\/proposals\/[^/]+\/pdf$/,
+  /^\/api\/proposals\/[^/]+\/quote-pdf$/,
   /^\/api\/campaigns\/[^/]+\/send-next$/,
 ];
 

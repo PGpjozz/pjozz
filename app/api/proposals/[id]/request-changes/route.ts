@@ -35,6 +35,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false as const, error: "Invalid token" }, { status: 403 });
     }
 
+    if (row.status === "expired" || row.status === "rejected" || row.status === "draft") {
+      return NextResponse.json(
+        { ok: false as const, error: "This proposal can no longer accept change requests." },
+        { status: 409 }
+      );
+    }
+
     await supabase
       .from("proposals")
       .update({ change_request_note: parsed.data.message })
@@ -43,11 +50,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const lead = row.lead_id ? await getLeadById(row.lead_id) : null;
     const notify = opsEmail();
     if (notify) {
-      await sendTransactionalEmail({
-        to: notify,
-        subject: `Change request: ${row.title}`,
-        html: `<p><strong>${lead?.company_name ?? "Client"}</strong> requested changes on proposal <strong>${row.title}</strong>.</p><blockquote style="border-left:3px solid #00e5a0;padding-left:12px;color:#333">${escapeHtml(parsed.data.message)}</blockquote>`,
-      });
+      try {
+        await sendTransactionalEmail({
+          to: notify,
+          subject: `Change request: ${row.title}`,
+          html: `<p><strong>${lead?.company_name ?? "Client"}</strong> requested changes on proposal <strong>${row.title}</strong>.</p><blockquote style="border-left:3px solid #00e5a0;padding-left:12px;color:#333">${escapeHtml(parsed.data.message)}</blockquote>`,
+        });
+      } catch (e) {
+        console.warn("[request-changes] ops email failed:", e);
+      }
+    }
+
+    if (lead?.email) {
+      try {
+        await sendTransactionalEmail({
+          to: lead.email,
+          subject: `We received your feedback — ${row.title}`,
+          html: `<p>Hi ${escapeHtml(lead.contact_name ?? "there")},</p><p>Thanks for your notes on <strong>${escapeHtml(row.title)}</strong>. Our team has been notified and will follow up with a revised proposal when ready.</p><p style="color:#666;font-size:12px">— Pjozz Technologies</p>`,
+        });
+      } catch (e) {
+        console.warn("[request-changes] client email failed:", e);
+      }
     }
 
     return NextResponse.json({ ok: true as const });

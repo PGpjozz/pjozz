@@ -4,7 +4,15 @@ import { ArrowRight } from "lucide-react";
 import { Reveal } from "@/components/marketing/Reveal";
 import { industrySolutions } from "@/lib/marketing/content";
 import { buttonVariants } from "@/components/ui/button";
+import { buildMetadata } from "@/lib/seo";
 import { cn } from "@/lib/utils";
+
+export const metadata = buildMetadata({
+  title: "Solutions — industry playbooks",
+  description:
+    "Vertical playbooks for education, small business, retail, security, and clinics — mapping industry pain to measurable outcomes and shippable systems.",
+  path: "/solutions",
+});
 
 export default function SolutionsPage() {
   return (
