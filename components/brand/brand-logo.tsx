@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import { BRAND_LOGO_PATH, BRAND_NAME } from "@/lib/brand";
@@ -10,7 +9,7 @@ type BrandLogoProps = {
   href?: string | null;
   /** Visual size preset */
   size?: "sm" | "md" | "lg";
-  /** Show “Technologies” under the mark (operator sidebar). */
+  /** Show “Technologies” under the mark (logo artwork already includes “jozz”). */
   showWordmark?: boolean;
   /** Light backgrounds (public proposal) vs dark marketing/operator chrome. */
   tone?: "dark" | "light";
@@ -18,10 +17,11 @@ type BrandLogoProps = {
   priority?: boolean;
 };
 
+/** Full lockup is roughly square; keep it large enough to read on dark UIs. */
 const SIZE = {
-  sm: { box: "h-8 w-8", img: 32, word: "text-sm", sub: "text-[9px]" },
-  md: { box: "h-10 w-10", img: 40, word: "text-base", sub: "text-[10px]" },
-  lg: { box: "h-14 w-14", img: 56, word: "text-lg", sub: "text-xs" },
+  sm: { img: "h-10 w-10", word: "text-xs", sub: "text-[9px]" },
+  md: { img: "h-14 w-14", word: "text-sm", sub: "text-[10px]" },
+  lg: { img: "h-24 w-24", word: "text-base", sub: "text-xs" },
 } as const;
 
 export function BrandLogo({
@@ -35,22 +35,17 @@ export function BrandLogo({
   const s = SIZE[size];
   const inner = (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <span
-        className={cn(
-          "relative shrink-0 overflow-hidden rounded-md",
-          s.box,
-          tone === "light" ? "bg-zinc-900" : "bg-transparent"
-        )}
-      >
-        <Image
-          src={BRAND_LOGO_PATH}
-          alt={BRAND_NAME}
-          width={s.img}
-          height={s.img}
-          className="h-full w-full object-contain"
-          priority={priority}
-        />
-      </span>
+      {/* Native img: logo has a dark plate; next/image crop made it look blank. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={BRAND_LOGO_PATH}
+        alt={BRAND_NAME}
+        width={96}
+        height={96}
+        className={cn("shrink-0 rounded-md object-contain", s.img)}
+        decoding="async"
+        {...(priority ? { fetchPriority: "high" as const } : {})}
+      />
       {showWordmark ? (
         <span className="leading-tight">
           <span

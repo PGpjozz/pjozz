@@ -1,6 +1,7 @@
 import { Image, StyleSheet, Text, View } from "@react-pdf/renderer";
 
-import { BRAND_NAME, BRAND_TAGLINE, brandLogoDataUri } from "@/lib/brand";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
+import { brandLogoDataUri } from "@/lib/brand-server";
 
 const styles = StyleSheet.create({
   header: {
