@@ -15,6 +15,7 @@ import {
 
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { useFeatureFlags } from "@/components/flags/feature-flags";
+import { SignOutButton } from "@/components/shared/sign-out-button";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -80,6 +81,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </span>
             <span className="text-xs font-medium text-muted-foreground">{aiOn ? "AI active" : "AI off"}</span>
           </div>
+          <SignOutButton />
         </div>
       </aside>
       <main className="min-h-0 min-w-0 flex-1">{children}</main>
