@@ -63,9 +63,8 @@ export const SITE = {
     handle: "", // Set NEXT_PUBLIC_TWITTER_HANDLE to enable (e.g. "@pjozz")
   },
   contact: {
-    // Read via helpers so env changes are picked up at request time.
-    emailFallback: "hello@pjozz.co.za",
-    phoneFallback: "+27 (0) 00 000 0000",
+    emailFallback: "pgpjoz@gmail.com",
+    phoneFallback: "+27 75 166 8800",
   },
 } as const;
 
@@ -86,7 +85,7 @@ export function sitePhoneHref(): string {
   const raw = process.env.NEXT_PUBLIC_PHONE_TEL?.trim();
   if (raw && raw.startsWith("tel:")) return raw;
   if (raw && raw.length) return `tel:${raw.replace(/[^\d+]/g, "")}`;
-  return "tel:+27000000000";
+  return "tel:+27751668800";
 }
 
 /** Twitter/X handle including the leading `@`, or null if unset. */

@@ -34,8 +34,8 @@ export const COMPANY = {
   vision:
     "A continent where every growing business runs on reliable, AI-ready systems — not spreadsheets and guesswork.",
   locations: ["Johannesburg", "Soweto", "South Africa"],
-  phoneDisplay: "+27 (0) XX XXX XXXX",
-  emailDisplay: "hello@pjozz.co.za",
+  phoneDisplay: "+27 75 166 8800",
+  emailDisplay: "pgpjoz@gmail.com",
 };
 
 export const testimonials = [
